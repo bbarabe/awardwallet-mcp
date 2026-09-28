@@ -21,11 +21,13 @@ It runs on your own computer, and your AwardWallet key stays there.
 
 ### Step 1: Get your AwardWallet API key
 
-You need an AwardWallet account with **AwardWallet Plus**. The API key comes from a free AwardWallet **Business** account that you create from your personal one:
+You need an AwardWallet account with **AwardWallet Plus**. The API key comes from a free AwardWallet **Business** account linked to your personal account; you sign in to both with the same login.
 
 1. Sign in to AwardWallet, then open [Create a business account](https://awardwallet.com/user/create-business-account).
-2. **Share your loyalty accounts with the new business.** Your personal account is listed in the business as its administrator, but nothing is shared until you share it. Share your accounts, and turn on sharing for accounts you add later. To include family, invite them from **Members → Add new member** on the business site; each person chooses what to share.
-3. Copy your **API key** from [business.awardwallet.com/profile/api](https://business.awardwallet.com/profile/api).
+2. **Give the business access to your loyalty accounts.** On the business site ([business.awardwallet.com](https://business.awardwallet.com)), click **Members** at the top, then **Request full access**.
+3. **Approve the request.** AwardWallet emails you a link to authorize it. Once you approve, all your loyalty accounts are shared with the business, including ones you add later. Until then the business lists you with no accounts, and your assistant will find nothing.
+4. **Optional: add family.** On the business site, use **Members → Add new member** to invite them. Each person approves in their own AwardWallet account and chooses how much to share; "Read all" is enough for this app.
+5. Copy your **API key** from [business.awardwallet.com/profile/api](https://business.awardwallet.com/profile/api).
 
 ### Step 2: Add it to your AI app
 
