@@ -1,0 +1,61 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Don't paste API keys, passwords, tokens or personal loyalty data.** Reproducing with demo mode (`AW_MOCK_MODE=true`) is ideal.
+        Security problem? Use [private vulnerability reporting](https://github.com/bbarabe/awardwallet-mcp/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The prompt or tool call, and its arguments if you have them.
+      placeholder: |
+        1. Ask Claude "..."
+        2. list_loyalty_accounts is called with {...}
+        3. ...
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options:
+        - Claude Desktop (extension .mcpb)
+        - Claude Desktop (claude_desktop_config.json)
+        - Claude Code
+        - OpenClaw
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Live (real AwardWallet account)
+        - Demo (AW_MOCK_MODE=true)
+        - Read-only (AW_READ_ONLY=true)
+  - type: input
+    id: version
+    attributes:
+      label: Server version
+      description: Output of `node dist/awardwallet-mcp.mjs --version`
+  - type: input
+    id: env
+    attributes:
+      label: OS and Node.js version
+      placeholder: Windows 11, Node 24.19
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages or logs
+      description: Tool results or stderr output, with anything private removed.
+      render: text

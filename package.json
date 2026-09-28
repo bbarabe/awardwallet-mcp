@@ -1,0 +1,59 @@
+{
+  "name": "awardwallet-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MCP server for AwardWallet: loyalty balances, account history, travel timeline and every AwardWallet API, for Claude Desktop, Claude Code and OpenClaw.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "awardwallet",
+    "loyalty",
+    "miles",
+    "points",
+    "travel",
+    "claude",
+    "openclaw"
+  ],
+  "license": "MIT",
+  "author": "Benoit Barabe",
+  "homepage": "https://github.com/bbarabe/awardwallet-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bbarabe/awardwallet-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bbarabe/awardwallet-mcp/issues"
+  },
+  "type": "module",
+  "bin": {
+    "awardwallet-mcp": "dist/awardwallet-mcp.mjs"
+  },
+  "engines": {
+    "node": ">=20.10"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node dist/awardwallet-mcp.mjs",
+    "login": "node dist/awardwallet-mcp.mjs login",
+    "status": "node dist/awardwallet-mcp.mjs status",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/awardwallet-mcp.mjs",
+    "pack:mcpb": "node scripts/build.mjs && node scripts/pack-mcpb.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "~1.30.1",
+    "zod": "^4.6.5"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "^2.1.0"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.0"
+  }
+}

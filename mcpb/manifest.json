@@ -1,0 +1,175 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "awardwallet-mcp",
+  "display_name": "AwardWallet",
+  "version": "0.1.0",
+  "description": "Loyalty balances, elite status, expirations, account history and trips from AwardWallet, plus every AwardWallet API.",
+  "long_description": "Ask about your airline miles, hotel points and credit-card rewards tracked in AwardWallet: balances, elite status, what expires soon, full transaction history, and upcoming trips. Uses the AwardWallet Business Account Access API, and optionally AwardWallet's paid Web Parsing, Email Parsing, Credit Card Bonus and Flight/Hotel Award Search APIs. Passwords and tokens needed by those APIs are typed into a one-time local page, never into the chat.",
+  "author": {
+    "name": "Benoit Barabe"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/bbarabe/awardwallet-mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bbarabe/awardwallet-mcp.git"
+  },
+  "support": "https://github.com/bbarabe/awardwallet-mcp/issues",
+  "keywords": [
+    "awardwallet",
+    "loyalty",
+    "miles",
+    "points",
+    "travel",
+    "rewards"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/awardwallet-mcp.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/awardwallet-mcp.mjs"
+      ],
+      "env": {
+        "AW_API_KEY": "${user_config.api_key}",
+        "AW_MOCK_MODE": "${user_config.demo_mode}",
+        "AW_READ_ONLY": "${user_config.read_only}",
+        "AW_CONNECT_LINKS": "${user_config.connection_links}",
+        "AW_EMAIL_API_REGION": "${user_config.email_region}",
+        "AW_WEB_PARSING_CREDENTIALS": "${user_config.web_parsing_credentials}",
+        "AW_EMAIL_PARSING_CREDENTIALS": "${user_config.email_parsing_credentials}",
+        "AW_CC_BONUS_CREDENTIALS": "${user_config.cc_bonus_credentials}",
+        "AW_FLIGHT_SEARCH_CREDENTIALS": "${user_config.flight_search_credentials}",
+        "AW_HOTEL_SEARCH_CREDENTIALS": "${user_config.hotel_search_credentials}"
+      }
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "AwardWallet API key",
+      "description": "Account Access API key from your AwardWallet Business account (Business → API settings). To try the extension without one, turn on Demo mode below.",
+      "sensitive": true,
+      "required": false
+    },
+    "demo_mode": {
+      "type": "boolean",
+      "title": "Demo mode",
+      "description": "Use built-in sample data instead of your AwardWallet account. Nothing is sent to AwardWallet.",
+      "default": false
+    },
+    "read_only": {
+      "type": "boolean",
+      "title": "Read-only",
+      "description": "Only offer tools that read data (no connection links, no paid API requests).",
+      "default": false
+    },
+    "connection_links": {
+      "type": "boolean",
+      "title": "Connection links",
+      "description": "Offer a tool that creates AwardWallet invitation links. Needs AwardWallet's approval of connection links for your business.",
+      "default": false
+    },
+    "email_region": {
+      "type": "string",
+      "title": "Email Parsing region",
+      "description": "\"us\" or \"eu\": which AwardWallet data center the Email Parsing API uses.",
+      "default": "us"
+    },
+    "web_parsing_credentials": {
+      "type": "string",
+      "title": "Web Parsing API credentials (optional)",
+      "description": "username:password issued by AwardWallet for the paid Web Parsing (Loyalty) API.",
+      "sensitive": true,
+      "required": false
+    },
+    "email_parsing_credentials": {
+      "type": "string",
+      "title": "Email Parsing API credentials (optional)",
+      "description": "username:password issued by AwardWallet for the paid Email Parsing API.",
+      "sensitive": true,
+      "required": false
+    },
+    "cc_bonus_credentials": {
+      "type": "string",
+      "title": "Credit Card Bonus API credentials (optional)",
+      "description": "username:password issued by AwardWallet for the paid Credit Card Bonus API.",
+      "sensitive": true,
+      "required": false
+    },
+    "flight_search_credentials": {
+      "type": "string",
+      "title": "Flight Award Search API credentials (optional)",
+      "description": "username:password issued by AwardWallet for the paid Flight Award Search API.",
+      "sensitive": true,
+      "required": false
+    },
+    "hotel_search_credentials": {
+      "type": "string",
+      "title": "Hotel Award Search API credentials (optional)",
+      "description": "username:password issued by AwardWallet for the paid Hotel Award Search API.",
+      "sensitive": true,
+      "required": false
+    }
+  },
+  "tools_generated": true,
+  "tools": [
+    {
+      "name": "get_status",
+      "description": "Which AwardWallet APIs are configured, and what the business account can see."
+    },
+    {
+      "name": "list_people",
+      "description": "Connected AwardWallet users and business members, with their ids and sharing levels."
+    },
+    {
+      "name": "list_loyalty_accounts",
+      "description": "Balances, elite status, expirations and update problems across loyalty accounts."
+    },
+    {
+      "name": "get_loyalty_account",
+      "description": "One account's properties, sub-accounts and transaction history."
+    },
+    {
+      "name": "get_travel_timeline",
+      "description": "Flights, hotels, cars and other reservations in a date window."
+    },
+    {
+      "name": "search_loyalty_programs",
+      "description": "Find loyalty programs AwardWallet supports."
+    },
+    {
+      "name": "get_loyalty_program",
+      "description": "Login fields, tracked properties and capabilities of a program."
+    },
+    {
+      "name": "search_api_operations",
+      "description": "Find raw AwardWallet API operations and their input schemas."
+    },
+    {
+      "name": "call_api_read_operation",
+      "description": "Run a read-only AwardWallet API operation."
+    },
+    {
+      "name": "call_api_write_operation",
+      "description": "Run an AwardWallet API operation that changes data or costs money."
+    },
+    {
+      "name": "get_secure_input_result",
+      "description": "Result of a request completed on the secure input page."
+    }
+  ],
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "win32",
+      "darwin",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=20.10.0"
+    }
+  }
+}

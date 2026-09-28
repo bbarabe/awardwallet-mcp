@@ -1,0 +1,35 @@
+name: Feature request or idea
+description: Suggest a tool, an improvement, or support for more of AwardWallet's APIs
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The question you'd like to ask your assistant, or the workflow you're after.
+      placeholder: "I'd like to ask \"which of my hotel certificates can I use in Paris before they expire?\""
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Ideas for how it could work
+      description: Optional. A new tool, a new filter, a change to results…
+  - type: dropdown
+    id: api
+    attributes:
+      label: AwardWallet API involved (if you know)
+      options:
+        - Account Access (free)
+        - Web Parsing (Loyalty)
+        - Email Parsing
+        - Credit Card Bonus
+        - Flight Award Search
+        - Hotel Award Search
+        - Not sure
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd be interested in opening a pull request for this
