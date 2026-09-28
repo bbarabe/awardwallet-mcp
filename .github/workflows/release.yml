@@ -1,0 +1,41 @@
+name: Release
+
+# Push a tag like v0.2.0 (matching package.json and mcpb/manifest.json) to publish a release with the
+# Claude Desktop extension and the single-file server attached.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check the tag matches the package and manifest versions
+        run: >-
+          node -e "const v = process.env.GITHUB_REF_NAME.replace(/^v/, '');
+          const p = require('./package.json'), m = require('./mcpb/manifest.json');
+          if (p.version !== v || m.version !== v) { console.error('tag', v, 'package.json', p.version, 'manifest', m.version); process.exit(1); }"
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build the server and the Claude Desktop extension
+        run: npm run pack:mcpb
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/awardwallet-mcp.mcpb#Claude Desktop extension (awardwallet-mcp.mcpb)" \
+            "dist/awardwallet-mcp.mjs#Server for ChatGPT desktop and other MCP apps (awardwallet-mcp.mjs)" \
+            --verify-tag \
+            --title "AwardWallet MCP $GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "$(cat .github/release-notes.md)"
