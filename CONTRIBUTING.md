@@ -4,7 +4,7 @@ Thanks for your interest! Bug reports, questions, ideas, docs fixes and code are
 
 ## Issues
 
-- **Bugs:** [open a bug report](https://github.com/bbarabe/awardwallet-mcp/issues/new?template=bug_report.yml). Say which client you use (Claude Desktop, Claude Code, OpenClaw…), your OS and Node version, and the output of `awardwallet-mcp --version`.
+- **Bugs:** [open a bug report](https://github.com/bbarabe/awardwallet-mcp/issues/new?template=bug_report.yml). Say which client you use (Claude Desktop, ChatGPT, Claude Code, OpenClaw…), your OS and Node version, and the output of `awardwallet-mcp --version`.
 - **Ideas and questions:** [open a feature request](https://github.com/bbarabe/awardwallet-mcp/issues/new?template=feature_request.yml), or a blank issue.
 - **Security problems:** please don't open a public issue. Follow [SECURITY.md](SECURITY.md).
 
@@ -29,6 +29,7 @@ npm test
 | `npm run build` | Bundles `dist/awardwallet-mcp.mjs` |
 | `npm run inspect` | Opens the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) against the build; run with `AW_MOCK_MODE=true` for demo data |
 | `npm run pack:mcpb` | Builds and validates the Claude Desktop extension |
+| `npm run pack:plugin` | Builds the ChatGPT / Codex plugin marketplace in `build/chatgpt-marketplace` |
 
 ## Where things live
 
@@ -53,7 +54,7 @@ These keep the server safe and pleasant for the model and the user:
 
 1. Fork, and create a branch from `main`.
 2. Make the change, with tests.
-3. Check that `npm run typecheck`, `npm test` and `npm run pack:mcpb` pass. CI runs them on Linux, Windows and macOS.
+3. Check that `npm run typecheck`, `npm test`, `npm run pack:mcpb` and `npm run pack:plugin` pass. CI runs them on Linux, Windows and macOS.
 4. Open the PR and describe what changed and why. Small, focused PRs are easiest to review.
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).

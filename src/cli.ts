@@ -1,21 +1,12 @@
 /** `awardwallet-mcp login | logout | status`: manage credentials in the OS credential store. */
 import { createInterface } from "node:readline";
-import { API_NAMES, AwardWalletApiError, AwardWalletClient } from "./awardwallet/client.js";
+import { API_NAMES, AwardWalletApiError } from "./awardwallet/client.js";
 import type { ApiId } from "./catalog/types.js";
-import { type AppConfig, loadConfig } from "./config.js";
+import { loadConfig } from "./config.js";
 import { CREDENTIAL_NAMES, credentialStoreName, deleteStoredCredential, loadKeyring, storeCredential } from "./credentials.js";
+import { verifyCredential } from "./setup.js";
 
 const API_IDS = Object.keys(CREDENTIAL_NAMES) as ApiId[];
-
-/** A cheap authenticated read per API, used to check credentials before saving them. */
-const PROBES: Record<ApiId, string> = {
-  accountAccess: "/connectedUser",
-  webParsing: "/providers/list",
-  emailParsing: "/providers/list",
-  creditCardBonus: "/cards",
-  flightAwardSearch: "/providers/list",
-  hotelAwardSearch: "/providers/list",
-};
 
 const out = (line = "") => process.stderr.write(`${line}\n`);
 
@@ -98,16 +89,6 @@ function prompt(question: string, hidden: boolean): Promise<string> {
   });
 }
 
-async function verify(api: ApiId, credential: string, base: AppConfig): Promise<string> {
-  const client = new AwardWalletClient({ ...base, mockMode: false, credentials: { [api]: credential } });
-  const data = await client.request<unknown>(api, "GET", PROBES[api]);
-  if (api === "accountAccess" && data && typeof data === "object") {
-    const users = (data as { connectedUsers?: unknown[] }).connectedUsers ?? [];
-    return `${users.length} connected user${users.length === 1 ? "" : "s"} visible`;
-  }
-  return "credentials accepted";
-}
-
 export async function login(args: string[]): Promise<void> {
   const api = parseApi(args);
   const name = CREDENTIAL_NAMES[api];
@@ -133,7 +114,7 @@ export async function login(args: string[]): Promise<void> {
   if (!args.includes("--no-verify")) {
     out("Checking with AwardWallet…");
     try {
-      out(`OK: ${await verify(api, credential, await loadConfig())}.`);
+      out(`OK: ${await verifyCredential(api, credential, await loadConfig())}.`);
     } catch (error) {
       if (error instanceof AwardWalletApiError && error.status === 401) throw new Error("AwardWallet rejected these credentials; nothing was saved.");
       throw new Error(`Could not verify with AwardWallet (${error instanceof Error ? error.message : error}). Re-run with --no-verify to save anyway.`);
@@ -157,13 +138,14 @@ export async function status(): Promise<void> {
   out(`AwardWallet MCP (${config.mockMode ? "demo mode" : "live"}${config.readOnly ? ", read-only" : ""})`);
   const keyring = await loadKeyring();
   out(`Credential store: ${keyring ? credentialStoreName() : "unavailable (optional module not installed)"}`);
+  out(`Settings file: ${config.settingsFile}`);
   for (const api of API_IDS) {
     const source = config.credentialSources[api];
     out(`  ${API_NAMES[api].padEnd(28)} ${source ? `configured (${source})` : "not configured"}`);
   }
   if (config.credentials.accountAccess && !config.mockMode) {
     try {
-      out(`Account Access check: ${await verify("accountAccess", config.credentials.accountAccess, config)}.`);
+      out(`Account Access check: ${await verifyCredential("accountAccess", config.credentials.accountAccess, config)}.`);
     } catch (error) {
       out(`Account Access check failed: ${error instanceof Error ? error.message : error}`);
       process.exitCode = 1;

@@ -42,38 +42,29 @@ Works on Windows and Mac. Claude Desktop includes everything needed to run it.
 
 To change the key later, go to **Settings → Extensions → AwardWallet → Configure**.
 
-#### ChatGPT desktop app (Codex or Work)
+#### ChatGPT desktop app
 
-ChatGPT's Codex and Work modes can use apps like this one that run on your computer.
+Works on Windows and Mac, in the ChatGPT desktop app's Codex and Work modes. ChatGPT includes everything needed to run it.
 
-1. Install **Node.js** (the "LTS" version) from [nodejs.org](https://nodejs.org). It's a normal installer, and you only need it once.
-2. Download **[awardwallet-mcp.mjs](https://github.com/bbarabe/awardwallet-mcp/releases/latest/download/awardwallet-mcp.mjs)**. Save it somewhere it can stay, such as a new `Documents\AwardWallet` folder.
-3. In ChatGPT, open **Settings → MCP servers → Add server** and fill in:
-   - **Name:** `AwardWallet`
-   - **Type:** STDIO
-   - **Command:** `node`, with the full path to the file you saved as its argument. For example, `C:\Users\you\Documents\AwardWallet\awardwallet-mcp.mjs`, or on a Mac `/Users/you/Documents/AwardWallet/awardwallet-mcp.mjs`.
-   - **Environment variable:** `AW_API_KEY` set to your API key
-4. Select **Restart**. Then ask ChatGPT about your points.
+1. In ChatGPT, open **Plugins** in the sidebar, then choose **Add → Add a marketplace**.
+2. Fill in:
+   - **Source:** `bbarabe/awardwallet-mcp`
+   - **Git ref:** `chatgpt-plugin`
 
-If the form doesn't have a place for the argument or the environment variable, add the server to ChatGPT's settings file instead. The file is `config.toml`, in the `.codex` folder of your home folder: `C:\Users\you\.codex\config.toml` on Windows, `~/.codex/config.toml` on a Mac. Paste this, with your own path and key:
+   Then select **Add marketplace**.
+3. Search the plugins for **AwardWallet**, open it and select **Install plugin**.
+4. Select **Set up AwardWallet**. ChatGPT checks the connection and gives you a link to a **secure connection page** that opens on your computer.
+5. Paste your API key on that page and select **Check and save**. Then tell ChatGPT you're done.
+6. Ask ChatGPT: *"Which of my points, certificates or elite statuses expire in the next 90 days?"*
 
-```toml
-[mcp_servers.awardwallet]
-command = "node"
-args = ['C:\Users\you\Documents\AwardWallet\awardwallet-mcp.mjs']
-
-[mcp_servers.awardwallet.env]
-AW_API_KEY = "paste-your-key-here"
-```
-
-ChatGPT stores that key in plain text in its settings file. If you'd rather keep it in your computer's credential store, use the [developer setup](#for-developers) instead.
+To change the key later, ask ChatGPT to *"connect AwardWallet again"*.
 
 ### Try it first with sample data
 
 You don't need an AwardWallet key to see how it works. Demo mode uses a made-up family with eight accounts, a few certificates and some trips, and sends nothing to AwardWallet.
 
 - **Claude Desktop:** leave the API key empty and switch on **Demo mode** in the extension's settings.
-- **ChatGPT:** use the environment variable `AW_MOCK_MODE` = `true` instead of `AW_API_KEY`.
+- **ChatGPT:** the plugin has no settings screen, so use the [developer setup](#connect-from-the-command-line) with `AW_MOCK_MODE=true`.
 
 ### Good to know
 
@@ -83,8 +74,8 @@ You don't need an AwardWallet key to see how it works. Demo mode uses a made-up 
 - **Trips need more.** The travel timeline needs a paid Business subscription and AwardWallet's approval.
 - **Privacy:**
   - The app runs on your computer and talks only to AwardWallet.
-  - Your key stays in Claude Desktop's secure settings (or ChatGPT's settings file).
-  - Passwords for AwardWallet's paid services are never typed into the chat; a one-time page opens on your computer for them.
+  - Your key stays on your computer: in Claude Desktop's secure settings, or for ChatGPT, in a settings file in the plugin's private folder.
+  - Keys and passwords are never typed into the chat; a one-time page opens on your computer for them.
 - **Read-only mode.** Add `AW_READ_ONLY` = `true` (Claude Desktop: the **Read-only** switch) to let the assistant look but never change anything. It's a good idea with autonomous agents.
 
 Something not working? [Open an issue](https://github.com/bbarabe/awardwallet-mcp/issues/new/choose). Please don't include your API key or personal details.
@@ -113,9 +104,10 @@ Credentials are resolved in this order:
 
 1. environment variable (`AW_API_KEY`);
 2. `AW_API_KEY_FILE`;
-3. the credential store.
+3. the credential store;
+4. the settings file written by `connect_awardwallet`'s secure page: `credentials.json` in the plugin's data folder (`PLUGIN_DATA`) when running as a ChatGPT/Codex plugin, otherwise in `%APPDATA%wardwallet-mcp` (Windows), `~/Library/Application Support/awardwallet-mcp` (Mac) or `~/.config/awardwallet-mcp` (Linux). The file is readable only by you.
 
-`logout --all` removes stored credentials. The Claude Desktop extension can't read the credential store (it ships without the native keyring module), so it uses its own settings.
+`logout --all` removes credentials from the credential store. The Claude Desktop extension and the ChatGPT plugin can't read the credential store (they ship without the native keyring module), so they use their own settings or the settings file.
 
 ### Connect from the command line
 
@@ -127,11 +119,20 @@ In the commands below, replace `/absolute/path/to/awardwallet-mcp` with the fold
 claude mcp add --scope user awardwallet -- node /absolute/path/to/awardwallet-mcp/dist/awardwallet-mcp.mjs
 ```
 
-**ChatGPT desktop / Codex CLI** (they share `~/.codex/config.toml`):
+**Codex CLI** (shares `~/.codex/config.toml` with the ChatGPT desktop app). Install the published plugin:
+
+```bash
+codex plugin marketplace add bbarabe/awardwallet-mcp --ref chatgpt-plugin
+codex plugin add awardwallet@awardwallet-mcp
+```
+
+Or run your build as a plain MCP server:
 
 ```bash
 codex mcp add awardwallet -- node /absolute/path/to/awardwallet-mcp/dist/awardwallet-mcp.mjs
 ```
+
+To try an unreleased plugin build, run `npm run pack:plugin` and add `build/chatgpt-marketplace` as a marketplace, either from the ChatGPT **Plugins → Add → Add a marketplace** dialog or with `codex plugin marketplace add`.
 
 **OpenClaw:**
 
@@ -161,6 +162,7 @@ For an autonomous agent, set `AW_READ_ONLY=true`. On a headless Linux machine wi
 | `call_api_read_operation` | read | Runs a read-only raw operation |
 | `call_api_write_operation` | write | Runs a raw operation that changes data, signs in to a loyalty or mailbox account, or costs money |
 | `get_secure_input_result` | read | Result of a request completed on the secure input page |
+| `connect_awardwallet` | write | Link to the secure input page where the user enters the API key (or a paid API's credentials); saves them to the settings file and uses them right away |
 | `create_connection_link` | write | *(opt-in, `AW_CONNECT_LINKS=true`)* Creates an AwardWallet invitation link; needs AwardWallet's approval |
 
 Every tool has `readOnlyHint`/`destructiveHint` annotations, and read-only mode doesn't register the write tools.
@@ -231,6 +233,7 @@ npm test            # unit + end-to-end tests (demo data, no network, no credent
 npm run typecheck
 npm run inspect     # MCP Inspector against the build (set AW_MOCK_MODE=true for demo data)
 npm run pack:mcpb   # dist/awardwallet-mcp.mcpb
+npm run pack:plugin # build/chatgpt-marketplace: plugin marketplace for ChatGPT desktop and Codex
 ```
 
 | Path | Contents |
@@ -239,10 +242,14 @@ npm run pack:mcpb   # dist/awardwallet-mcp.mcpb
 | `src/awardwallet/` | API client, response types, demo data, summaries and date handling |
 | `src/catalog/` | Raw API operations, one file per AwardWallet API, each with a Zod input schema |
 | `src/secure-input.ts` | The local secret-entry page |
+| `src/setup.ts` | Checking and saving API credentials (`connect_awardwallet`, `login`) |
+| `chatgpt-plugin/` | ChatGPT / Codex plugin: manifest, MCP config, Node launchers, skills and icons |
 | `src/cli.ts` | `login`, `logout`, `status` |
 | `test/` | Unit tests, and end-to-end tests that run the built server over stdio |
 
-To release, bump the version in `package.json`, `mcpb/manifest.json` and `src/server.ts`, then push a matching tag (for example `v0.2.0`). The release workflow tests, builds, and attaches `awardwallet-mcp.mcpb` and `awardwallet-mcp.mjs` to a new GitHub release.
+To release, bump the version in `package.json`, `mcpb/manifest.json`, `chatgpt-plugin/plugin.json` and `src/server.ts`, then push a matching tag (for example `v0.2.0`). The release workflow tests and builds, attaches `awardwallet-mcp.mcpb` and `awardwallet-mcp.mjs` to a new GitHub release, and publishes the plugin to the `chatgpt-plugin` branch that ChatGPT installs from.
+
+The plugin's launchers (`chatgpt-plugin/bin/`) run the server with the Node.js runtime that ships with ChatGPT and Codex, and fall back to a Node.js on `PATH`.
 
 ## Contributing
 

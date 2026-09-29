@@ -1,13 +1,26 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { request as httpRequest } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { clearResponseCache } from "../../src/awardwallet/client.js";
 import { localDate } from "../../src/awardwallet/format.js";
 import { loadConfig } from "../../src/config.js";
 import type { SecureInputServer } from "../../src/secure-input.js";
 import { createAwardWalletServer } from "../../src/server.js";
+
+const tempDirs: string[] = [];
+afterAll(() => tempDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+
+/** A fresh PLUGIN_DATA folder, so tests never touch this machine's real settings file. */
+function dataDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "awmcp-data-"));
+  tempDirs.push(dir);
+  return dir;
+}
 
 async function connect(env: Record<string, string>) {
   clearResponseCache();
@@ -50,6 +63,7 @@ describe("MCP tools (demo mode)", () => {
       [
         "call_api_read_operation",
         "call_api_write_operation",
+        "connect_awardwallet",
         "create_connection_link",
         "get_loyalty_account",
         "get_loyalty_program",
@@ -70,7 +84,7 @@ describe("MCP tools (demo mode)", () => {
       expect(tool.name.length).toBeLessThanOrEqual(64);
     }
     const writeTools = tools.filter((t) => !t.annotations?.readOnlyHint).map((t) => t.name).sort();
-    expect(writeTools).toEqual(["call_api_write_operation", "create_connection_link"]);
+    expect(writeTools).toEqual(["call_api_write_operation", "connect_awardwallet", "create_connection_link"]);
   });
 
   it("get_status reports demo mode and the business account", async () => {
@@ -373,15 +387,97 @@ describe("read-only mode", () => {
 
 describe("unconfigured server", () => {
   it("explains how to add the API key", async () => {
-    const { client } = await connect({});
+    const { client, secureInput } = await connect({ PLUGIN_DATA: dataDir() });
     const status = await call(client, "get_status");
     // A key may exist in this machine's credential store; only assert when none was found.
     if (!status.data.apis[0].configured) {
-      expect(status.data.setupHelp).toMatch(/awardwallet-mcp login/);
+      expect(status.data.setupHelp).toMatch(/connect_awardwallet/);
       const accounts = await call(client, "list_loyalty_accounts");
       expect(accounts.isError).toBe(true);
-      expect(accounts.text).toMatch(/not configured/);
+      expect(accounts.text).toMatch(/not configured.*connect_awardwallet/);
     }
+    await secureInput?.close();
+    await client.close();
+  });
+});
+
+describe("connect_awardwallet", () => {
+  const GOOD_KEY = "good-key-0123456789";
+  const realFetch = globalThis.fetch;
+  const form = { "Content-Type": "application/x-www-form-urlencoded" };
+
+  beforeAll(() => {
+    // AwardWallet accepts GOOD_KEY only; the test's own requests to the local page pass through.
+    vi.stubGlobal("fetch", (input: string | URL | Request, init?: RequestInit) => {
+      const request = new Request(input, init);
+      if (new URL(request.url).hostname !== "business.awardwallet.com") return realFetch(input, init);
+      if (request.headers.get("X-Authentication") !== GOOD_KEY) return Promise.resolve(new Response('{"error":"Invalid API key"}', { status: 401 }));
+      return Promise.resolve(Response.json({ connectedUsers: [] }));
+    });
+  });
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("checks the key on the local page, saves it and uses it right away", async () => {
+    const dir = dataDir();
+    const { client, secureInput } = await connect({ PLUGIN_DATA: dir });
+    const started = await call(client, "connect_awardwallet");
+    if (started.isError) throw new Error(started.text);
+    expect(started.data.status).toBe("waiting_for_secure_input");
+    const url = started.data.url as string;
+
+    const page = await (await realFetch(url)).text();
+    expect(page).toContain("Connect AwardWallet");
+    expect(page).toContain(join(dir, "credentials.json"));
+
+    // A wrong key shows the form again on the same link, and nothing is saved.
+    const wrong = await realFetch(url, { method: "POST", headers: form, body: "field0=bad-key-0000&action=send" });
+    expect(wrong.status).toBe(400);
+    const wrongPage = await wrong.text();
+    expect(wrongPage).toContain("didn&#39;t accept this key");
+    expect(wrongPage).not.toContain("bad-key-0000");
+    expect(existsSync(join(dir, "credentials.json"))).toBe(false);
+
+    const right = await realFetch(url, { method: "POST", headers: form, body: `field0=${GOOD_KEY}&action=send` });
+    expect(right.status).toBe(200);
+    expect(await right.text()).toContain("Connected");
+
+    const result = await call(client, "get_secure_input_result", { submissionId: started.data.submissionId });
+    expect(result.data).toMatchObject({ operation: "connect_awardwallet", status: "completed" });
+    expect(result.text).not.toContain(GOOD_KEY);
+    expect(JSON.parse(readFileSync(join(dir, "credentials.json"), "utf8"))).toEqual({ AW_API_KEY: GOOD_KEY });
+
+    // No restart needed.
+    const status = await call(client, "get_status");
+    expect(status.data.apis[0]).toMatchObject({ configured: true, credentialSource: "settings file" });
+    expect(status.data.setupHelp).toBeUndefined();
+    await secureInput?.close();
+    await client.close();
+
+    // A new server (the next session) finds the saved key.
+    const next = await loadConfig({ PLUGIN_DATA: dir });
+    if (next.credentialSources.accountAccess !== "credential store") {
+      expect(next.credentials.accountAccess).toBe(GOOD_KEY);
+      expect(next.credentialSources.accountAccess).toBe("settings file");
+    }
+  });
+
+  it("defers to a key set in the MCP client's settings", async () => {
+    const { client, secureInput } = await connect({ PLUGIN_DATA: dataDir(), AW_API_KEY: GOOD_KEY });
+    const result = await call(client, "connect_awardwallet");
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/AW_API_KEY environment variable/);
+    await secureInput?.close();
+    await client.close();
+  });
+
+  it("isn't needed in demo mode", async () => {
+    const { client, secureInput } = await connect({ AW_MOCK_MODE: "true", PLUGIN_DATA: dataDir() });
+    const result = await call(client, "connect_awardwallet");
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/Demo mode is on/);
+    await secureInput?.close();
     await client.close();
   });
 });

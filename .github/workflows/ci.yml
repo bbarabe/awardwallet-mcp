@@ -33,3 +33,5 @@ jobs:
       - run: npm test
       - name: Build and validate the Claude Desktop extension
         run: npm run pack:mcpb
+      - name: Build the ChatGPT / Codex plugin
+        run: npm run pack:plugin

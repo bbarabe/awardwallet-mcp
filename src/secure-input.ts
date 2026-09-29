@@ -1,8 +1,9 @@
 /**
- * Local one-time form for secrets (loyalty or mailbox passwords, OAuth tokens) that an AwardWallet
- * operation needs. The tool call returns a link; the user types the secret into this page; the
- * server sends the request to AwardWallet directly. Secrets never reach the conversation, logs or
- * disk. The page listens on 127.0.0.1 only, each link is an unguessable single-use token that
+ * Local one-time form for secrets: loyalty or mailbox passwords and OAuth tokens that an AwardWallet
+ * operation needs, and the AwardWallet API credentials themselves (connect_awardwallet). The tool
+ * call returns a link; the user types the secret into this page; the server uses it directly.
+ * Secrets never reach the conversation or logs, and only API credentials are saved (to the settings
+ * file). The page listens on 127.0.0.1 only, each link is an unguessable single-use token that
  * expires after 15 minutes, and the page runs no scripts.
  */
 import { randomBytes } from "node:crypto";
@@ -21,10 +22,34 @@ const ID_PATTERN = /^[A-Za-z0-9_-]{32}$/;
 
 export type SubmissionStatus = "waiting" | "sending" | "completed" | "failed" | "cancelled" | "expired";
 
+/** Thrown by SecureRequest.run when the values were refused before anything changed; the form is shown again. */
+export class InputRejectedError extends Error {}
+
+/** What a secure-input link asks for, and what happens to the values once submitted. */
+export interface SecureRequest {
+  /** Reported by get_secure_input_result, e.g. "email_parsing.connect_imap_mailbox". */
+  operation: string;
+  title: string;
+  subtitle: string;
+  /** Tells the user where the values go and whether they are kept. */
+  intro: string;
+  /** Non-secret facts that say where the values will be used, shown prominently. */
+  facts: [string, string][];
+  /** The full request without secrets, shown collapsed. */
+  preview?: string;
+  /** Set when a password would travel without encryption; the user must confirm it. */
+  insecureWarning?: string;
+  /** Each field's `path` keys its submitted value in `run`. */
+  fields: SecretField[];
+  submitLabel: string;
+  done: { title: string; message: string };
+  /** Uses the submitted values; the result (with those values redacted) is kept for get_secure_input_result. */
+  run(secrets: Record<string, string>): Promise<unknown>;
+}
+
 export interface Submission {
   id: string;
-  call: PreparedCall;
-  fields: SecretField[];
+  request: SecureRequest;
   status: SubmissionStatus;
   createdAt: number;
   expiresAt: number;
@@ -39,18 +64,15 @@ export class SecureInputServer {
   private starting?: Promise<void>;
   private readonly submissions = new Map<string, Submission>();
 
-  constructor(
-    private readonly client: AwardWalletClient,
-    private readonly options: AppConfig["secureInput"],
-  ) {}
+  constructor(private readonly options: AppConfig["secureInput"]) {}
 
   /** Registers a pending request and returns the link the user opens to complete it. */
-  async create(call: PreparedCall, fields: SecretField[]): Promise<{ submissionId: string; url: string; expiresAt: string }> {
+  async create(request: SecureRequest): Promise<{ submissionId: string; url: string; expiresAt: string }> {
     await this.ensureStarted();
     this.sweep();
     const id = randomBytes(24).toString("base64url");
     const now = Date.now();
-    this.submissions.set(id, { id, call, fields, status: "waiting", createdAt: now, expiresAt: now + LINK_TTL_MS });
+    this.submissions.set(id, { id, request, status: "waiting", createdAt: now, expiresAt: now + LINK_TTL_MS });
     return { submissionId: id, url: `${this.baseUrl()}/secure/${id}`, expiresAt: new Date(now + LINK_TTL_MS).toISOString() };
   }
 
@@ -178,7 +200,7 @@ export class SecureInputServer {
 
     const secrets: Record<string, string> = {};
     const missing: string[] = [];
-    sub.fields.forEach((field, index) => {
+    sub.request.fields.forEach((field, index) => {
       const value = form.get(`field${index}`) ?? "";
       if (value) secrets[field.path] = value;
       else if (field.required) missing.push(field.label);
@@ -187,7 +209,7 @@ export class SecureInputServer {
       this.send(res, 400, formPage(sub, `Please fill in: ${missing.join(", ")}.`));
       return;
     }
-    if (insecureTransport(sub) && form.get("confirmInsecure") !== "yes") {
+    if (sub.request.insecureWarning && form.get("confirmInsecure") !== "yes") {
       this.send(res, 400, formPage(sub, "Confirm that the password may be sent without encryption, or cancel."));
       return;
     }
@@ -196,15 +218,20 @@ export class SecureInputServer {
     sub.status = "sending";
     const values = Object.values(secrets);
     try {
-      sub.response = redactValues(await executeCall(this.client, sub.call, secrets), values);
+      sub.response = redactValues(await sub.request.run(secrets), values);
       sub.status = "completed";
     } catch (error) {
+      if (error instanceof InputRejectedError) {
+        // Nothing happened yet: let the user correct the values on the same link.
+        sub.status = "waiting";
+        this.send(res, 400, formPage(sub, redactValues(error.message, values)));
+        return;
+      }
       const message = error instanceof AwardWalletApiError || error instanceof Error ? error.message : String(error);
       sub.error = redactValues(message, values);
       sub.status = "failed";
-    } finally {
-      sub.finishedAt = Date.now();
     }
+    sub.finishedAt = Date.now();
     this.send(res, 200, statusPage(sub));
   }
 
@@ -236,23 +263,39 @@ export function redactValues<T>(value: T, secrets: string[]): T {
   return scrub(value) as T;
 }
 
-/** An IMAP connection (or update) with TLS explicitly turned off. */
-function insecureTransport(sub: Submission): boolean {
-  return sub.call.body?.["secure"] === false;
+/** A raw AwardWallet API call waiting for its secret fields. */
+export function apiCallRequest(client: AwardWalletClient, call: PreparedCall, fields: SecretField[]): SecureRequest {
+  // An IMAP connection (or update) with TLS explicitly turned off.
+  const insecure = call.body?.["secure"] === false;
+  return {
+    operation: call.op.id,
+    title: call.op.title,
+    subtitle: API_NAMES[call.op.api],
+    intro: "Your AI assistant prepared this AwardWallet request. What you type below goes from this page straight to AwardWallet. It is not shown to the assistant and is not saved.",
+    facts: destinationFacts(call),
+    preview: requestPreview(call),
+    insecureWarning: insecure
+      ? `Encryption is off for this connection (secure: false). AwardWallet would send the password to ${String(call.body?.["host"] ?? "the server")} unencrypted.`
+      : undefined,
+    fields,
+    submitLabel: "Send to AwardWallet",
+    done: { title: "Sent to AwardWallet", message: "AwardWallet accepted the request. Go back to your AI assistant and ask it to check the result." },
+    run: (secrets) => executeCall(client, call, secrets),
+  };
 }
 
 const DESTINATION_KEYS = /^(host|server|port|secure|login|login2|login3|email|provider|destination|accountId|mailboxId|userId)$/i;
 
 /** The non-secret facts that say where the secret will be used, shown prominently on the form. */
-function destinationFacts(sub: Submission): [string, string][] {
-  const facts: [string, string][] = [["Request", `${sub.call.op.method} ${sub.call.path}`]];
+function destinationFacts(call: PreparedCall): [string, string][] {
+  const facts: [string, string][] = [["Request", `${call.op.method} ${call.path}`]];
   const visit = (obj: Record<string, unknown> | undefined, prefix: string) => {
     for (const [key, value] of Object.entries(obj ?? {})) {
       if (value && typeof value === "object" && !Array.isArray(value)) visit(value as Record<string, unknown>, `${prefix}${key}.`);
       else if (DESTINATION_KEYS.test(key) && value !== undefined && value !== null && value !== "") facts.push([`${prefix}${key}`, String(value)]);
     }
   };
-  visit(sub.call.body, "");
+  visit(call.body, "");
   return facts;
 }
 
@@ -279,30 +322,27 @@ function page(title: string, body: ReturnType<typeof html>): string {
   return renderDocument(title, body);
 }
 
-function requestPreview(sub: Submission): string {
-  const preview = { request: `${sub.call.op.method} ${sub.call.path}`, query: sub.call.query, body: sub.call.body };
+function requestPreview(call: PreparedCall): string {
+  const preview = { request: `${call.op.method} ${call.path}`, query: call.query, body: call.body };
   const text = JSON.stringify(preview, null, 2);
   return text.length > 3000 ? `${text.slice(0, 3000)}\n…` : text;
 }
 
 function formPage(sub: Submission, error?: string): string {
+  const req = sub.request;
   const expires = new Date(sub.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return page(
-    sub.call.op.title,
-    html`<h1>${sub.call.op.title}</h1>
-<p class="muted">${API_NAMES[sub.call.op.api]}</p>
-<p>Your AI assistant prepared this AwardWallet request. What you type below goes from this page straight to AwardWallet. It is not shown to the assistant and is not saved.</p>
+    req.title,
+    html`<h1>${req.title}</h1>
+<p class="muted">${req.subtitle}</p>
+<p>${req.intro}</p>
 <p><strong>Check where it will be used before you continue:</strong></p>
-<table class="facts">${destinationFacts(sub).map(([k, v]) => html`<tr><th>${k}</th><td class="mono">${v}</td></tr>`)}</table>
-${
-  insecureTransport(sub)
-    ? html`<div class="warn"><strong>Encryption is off for this connection (secure: false).</strong> AwardWallet would send the password to ${String(sub.call.body?.["host"] ?? "the server")} unencrypted.</div>`
-    : ""
-}
-<details><summary class="small">Full request (without secrets)</summary><pre>${requestPreview(sub)}</pre></details>
+<table class="facts">${req.facts.map(([k, v]) => html`<tr><th>${k}</th><td class="mono">${v}</td></tr>`)}</table>
+${req.insecureWarning ? html`<div class="warn"><strong>${req.insecureWarning}</strong></div>` : ""}
+${req.preview ? html`<details><summary class="small">Full request (without secrets)</summary><pre>${req.preview}</pre></details>` : ""}
 ${error ? html`<p class="error">${error}</p>` : ""}
 <form method="post">
-${sub.fields.map(
+${req.fields.map(
   (field, index) => html`<div class="field">
   <label for="field${index}">${field.label}${field.required ? "" : html` <span class="muted small">(optional)</span>`}</label>
   <input id="field${index}" name="field${index}" type="${field.sensitive ? "password" : "text"}" autocomplete="off" ${field.required ? html`required` : ""}>
@@ -310,12 +350,12 @@ ${sub.fields.map(
 </div>`,
 )}
 ${
-  insecureTransport(sub)
+  req.insecureWarning
     ? html`<div class="field"><label><input type="checkbox" name="confirmInsecure" value="yes"> I understand the password may be sent without encryption</label></div>`
     : ""
 }
 <div class="actions">
-  <button type="submit" name="action" value="send" class="primary">Send to AwardWallet</button>
+  <button type="submit" name="action" value="send" class="primary">${req.submitLabel}</button>
   <button type="submit" name="action" value="cancel" formnovalidate>Cancel</button>
 </div>
 </form>
@@ -326,7 +366,7 @@ ${
 function statusPage(sub: Submission): string {
   switch (sub.status) {
     case "completed":
-      return page("Sent", html`<h1 class="ok">Sent to AwardWallet</h1><p>AwardWallet accepted the request. Go back to your AI assistant and ask it to check the result.</p>`);
+      return page(sub.request.done.title, html`<h1 class="ok">${sub.request.done.title}</h1><p>${sub.request.done.message}</p>`);
     case "failed":
       return page("Request failed", html`<h1 class="error">AwardWallet returned an error</h1><p>${sub.error ?? "Unknown error"}</p><p>Go back to your AI assistant to try again.</p>`);
     case "cancelled":

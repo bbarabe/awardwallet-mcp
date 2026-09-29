@@ -1,0 +1,31 @@
+#!/bin/sh
+# Starts the AwardWallet MCP server with the Node.js runtime that ships with ChatGPT and Codex,
+# so users don't have to install Node. Falls back to a Node.js on PATH.
+set -eu
+
+if [ "$#" -lt 1 ]; then
+  echo 'AwardWallet could not start: missing server path.' >&2
+  exit 64
+fi
+
+cache_root=${XDG_CACHE_HOME:-${HOME:-}/.cache}
+for candidate in \
+  "${CODEX_MCP_NODE_PATH:-}" \
+  "$cache_root/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node" \
+  "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node" \
+  "/Applications/Codex.app/Contents/Resources/cua_node/bin/node"
+do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+# Apps started from the Dock don't see the shell's PATH; add the usual install locations.
+PATH="${PATH:-/usr/bin:/bin}:/opt/homebrew/bin:/usr/local/bin"
+export PATH
+if node_path=$(command -v node 2>/dev/null); then
+  exec "$node_path" "$@"
+fi
+
+echo 'AwardWallet could not find Node.js. Update the ChatGPT desktop app, or install Node.js 20.10 or later from https://nodejs.org.' >&2
+exit 127

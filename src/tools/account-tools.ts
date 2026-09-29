@@ -8,6 +8,7 @@ import type { Itinerary } from "../awardwallet/types.js";
 import type { ApiId } from "../catalog/types.js";
 import { ACCOUNT_ACCESS_LEVELS, type AppConfig, TRIP_ACCESS_LEVELS } from "../config.js";
 import { credentialStoreName, loadKeyring } from "../credentials.js";
+import { KEY_PAGE } from "../setup.js";
 import { fail, guard, ok, READ_ONLY } from "./results.js";
 
 export interface ToolContext {
@@ -75,11 +76,14 @@ export function registerAccountTools(server: McpServer, ctx: ToolContext): void 
           apis,
           businessAccount,
           credentialStore: keyring ? credentialStoreName() : "unavailable (optional module not installed)",
+          settingsFile: config.mockMode ? undefined : config.settingsFile,
           setupHelp: ctx.client.isConfigured("accountAccess")
             ? undefined
-            : keyring
-              ? `${noKey} run \`awardwallet-mcp login\` or set AW_API_KEY.`
-              : `${noKey} enter it in Claude Desktop under Settings → Extensions → AwardWallet → Configure, or set AW_API_KEY in your MCP client's config. This copy of the server can't read the OS credential store, so a key saved with \`awardwallet-mcp login\` isn't visible to it.`,
+            : !config.readOnly
+              ? `No AwardWallet API key yet. Call connect_awardwallet: it gives the user a link to a page on this computer where they paste the key from ${KEY_PAGE}.`
+              : keyring
+                ? `${noKey} run \`awardwallet-mcp login\` or set AW_API_KEY.`
+                : `${noKey} enter it in Claude Desktop under Settings → Extensions → AwardWallet → Configure, or set AW_API_KEY in your MCP client's config. This copy of the server can't read the OS credential store, so a key saved with \`awardwallet-mcp login\` isn't visible to it.`,
         });
       }),
   );
