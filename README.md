@@ -59,6 +59,8 @@ Works on Windows and Mac, in the ChatGPT desktop app's Codex and Work modes. Cha
 
 To change the key later, ask ChatGPT to *"connect AwardWallet again"*.
 
+To update to a new version, open **Settings → Plugins → Marketplace**, select **Upgrade** next to **AwardWallet MCP**, then restart ChatGPT. To uninstall, select the delete icon there instead; your saved key stays on your computer in case you reinstall.
+
 ### Try it first with sample data
 
 You don't need an AwardWallet key to see how it works. Demo mode uses a made-up family with eight accounts, a few certificates and some trips, and sends nothing to AwardWallet.
