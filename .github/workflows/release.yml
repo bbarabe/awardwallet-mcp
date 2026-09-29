@@ -1,8 +1,8 @@
 name: Release
 
-# Push a tag like v0.2.0 (matching package.json, mcpb/manifest.json and chatgpt-plugin/plugin.json) to
+# Push a tag like v0.2.0 (matching package.json, mcpb/manifest.json and plugin/plugin.json) to
 # publish a release with the Claude Desktop extension and the single-file server attached, and to update
-# the chatgpt-plugin branch, the plugin marketplace that ChatGPT desktop and Codex install from.
+# the plugin branch, the plugin marketplace that ChatGPT desktop and Codex install from.
 on:
   push:
     tags: ["v*"]
@@ -23,7 +23,7 @@ jobs:
       - name: Check the tag matches the package and manifest versions
         run: >-
           node -e "const v = process.env.GITHUB_REF_NAME.replace(/^v/, '');
-          const p = require('./package.json'), m = require('./mcpb/manifest.json'), c = require('./chatgpt-plugin/plugin.json');
+          const p = require('./package.json'), m = require('./mcpb/manifest.json'), c = require('./plugin/plugin.json');
           if (p.version !== v || m.version !== v || c.version !== v) { console.error('tag', v, 'package.json', p.version, 'manifest', m.version, 'plugin', c.version); process.exit(1); }"
       - run: npm run typecheck
       - run: npm test
@@ -40,17 +40,17 @@ jobs:
             --title "AwardWallet MCP $GITHUB_REF_NAME" \
             --generate-notes \
             --notes "$(cat .github/release-notes.md)"
-      - name: Publish the plugin marketplace to the chatgpt-plugin branch
+      - name: Publish the plugin marketplace to the plugin branch
         run: |
-          if git ls-remote --exit-code --heads origin chatgpt-plugin >/dev/null; then
-            git fetch --depth=1 origin chatgpt-plugin
-            git worktree add -B chatgpt-plugin marketplace FETCH_HEAD
+          if git ls-remote --exit-code --heads origin plugin >/dev/null; then
+            git fetch --depth=1 origin plugin
+            git worktree add -B plugin marketplace FETCH_HEAD
           else
-            git worktree add --orphan -b chatgpt-plugin marketplace
+            git worktree add --orphan -b plugin marketplace
           fi
           find marketplace -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a build/chatgpt-marketplace/. marketplace/
           cd marketplace
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "AwardWallet plugin $GITHUB_REF_NAME"
-          git push origin chatgpt-plugin
+          git push origin plugin

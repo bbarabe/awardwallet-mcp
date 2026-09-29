@@ -49,7 +49,7 @@ Works on Windows and Mac, in the ChatGPT desktop app's Codex and Work modes. Cha
 1. In ChatGPT, open **Plugins** in the sidebar, then choose **Add → Add a marketplace**.
 2. Fill in:
    - **Source:** `bbarabe/awardwallet-mcp`
-   - **Git ref:** `chatgpt-plugin`
+   - **Git ref:** `plugin`
 
    Then select **Add marketplace**.
 3. Search the plugins for **AwardWallet**, open it and select **Install plugin**.
@@ -124,7 +124,7 @@ claude mcp add --scope user awardwallet -- node /absolute/path/to/awardwallet-mc
 **Codex CLI** (shares `~/.codex/config.toml` with the ChatGPT desktop app). Install the published plugin:
 
 ```bash
-codex plugin marketplace add bbarabe/awardwallet-mcp --ref chatgpt-plugin
+codex plugin marketplace add bbarabe/awardwallet-mcp --ref plugin
 codex plugin add awardwallet@awardwallet-mcp
 ```
 
@@ -245,13 +245,13 @@ npm run pack:plugin # build/chatgpt-marketplace: plugin marketplace for ChatGPT 
 | `src/catalog/` | Raw API operations, one file per AwardWallet API, each with a Zod input schema |
 | `src/secure-input.ts` | The local secret-entry page |
 | `src/setup.ts` | Checking and saving API credentials (`connect_awardwallet`, `login`) |
-| `chatgpt-plugin/` | ChatGPT / Codex plugin: manifest, MCP config, Node launchers, skills and icons |
+| `plugin/` | ChatGPT / Codex plugin: manifest, MCP config, Node launchers, skills and icons |
 | `src/cli.ts` | `login`, `logout`, `status` |
 | `test/` | Unit tests, and end-to-end tests that run the built server over stdio |
 
-To release, bump the version in `package.json`, `mcpb/manifest.json`, `chatgpt-plugin/plugin.json` and `src/server.ts`, then push a matching tag (for example `v0.2.0`). The release workflow tests and builds, attaches `awardwallet-mcp.mcpb` and `awardwallet-mcp.mjs` to a new GitHub release, and publishes the plugin to the `chatgpt-plugin` branch that ChatGPT installs from.
+To release, bump the version in `package.json`, `mcpb/manifest.json`, `plugin/plugin.json` and `src/server.ts`, then push a matching tag (for example `v0.2.0`). The release workflow tests and builds, attaches `awardwallet-mcp.mcpb` and `awardwallet-mcp.mjs` to a new GitHub release, and publishes the plugin to the `plugin` branch that ChatGPT installs from.
 
-The plugin's launchers (`chatgpt-plugin/bin/`) run the server with the Node.js runtime that ships with ChatGPT and Codex, and fall back to a Node.js on `PATH`.
+The plugin's launchers (`plugin/bin/`) run the server with the Node.js runtime that ships with ChatGPT and Codex, and fall back to a Node.js on `PATH`.
 
 ## Contributing
 
