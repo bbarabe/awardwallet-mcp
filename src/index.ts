@@ -7,10 +7,17 @@ async function serve(): Promise<void> {
   const config = await loadConfig();
   const { server, secureInput } = createAwardWalletServer(config);
   const transport = new StdioServerTransport();
+  let stopping = false;
   const shutdown = async () => {
+    if (stopping) return;
+    stopping = true;
     await secureInput?.close();
     await server.close();
-    process.exit(0);
+    // Let the event loop drain instead of calling process.exit() now: exiting while network handles
+    // are still closing crashes libuv on Windows ("Assertion failed ... async.c") when the native
+    // keyring module is loaded. The timer only matters if something keeps the loop busy.
+    process.stdin.destroy();
+    setTimeout(() => process.exit(0), 5_000).unref();
   };
   // The client closing stdin ends the session.
   process.stdin.on("end", shutdown);
