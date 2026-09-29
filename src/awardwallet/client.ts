@@ -24,6 +24,12 @@ export const API_DOCS: Record<ApiId, string> = {
 /** Environment variable / credential-store entry holding each API's credential. */
 export const API_SECRET_NAMES = CREDENTIAL_NAMES;
 
+/** Every way to add an API's credentials, for error messages the assistant relays. */
+export function howToAddCredentials(api: ApiId): string {
+  const which = api === "accountAccess" ? "" : ` --api ${api}`;
+  return `Call connect_awardwallet${api === "accountAccess" ? "" : ` with api "${api}"`} so the user can enter it on a local page, or run \`awardwallet-mcp login${which}\`, or set ${API_SECRET_NAMES[api]}.`;
+}
+
 export function apiBaseUrl(api: ApiId, config: Pick<AppConfig, "emailRegion">): string {
   switch (api) {
     case "accountAccess":
@@ -97,7 +103,7 @@ function describeFailure(api: ApiId, status: number, detail: string | undefined)
     case 400:
       return `AwardWallet rejected the request as invalid (400)${suffix}`;
     case 401:
-      return `AwardWallet rejected the credentials for the ${name} (401). Update ${API_SECRET_NAMES[api]} (run \`awardwallet-mcp login\` or fix the environment variable).`;
+      return `AwardWallet rejected the credentials for the ${name} (401). ${howToAddCredentials(api)}`;
     case 403:
       return `AwardWallet refused the request (403)${suffix} This usually means the business account isn't approved or subscribed for this feature.`;
     case 404:
@@ -155,7 +161,7 @@ export class AwardWalletClient {
       throw new AwardWalletApiError(
         api,
         0,
-        `The ${API_NAMES[api]} is not configured. Add its credentials with \`awardwallet-mcp login --api ${api}\` or the ${API_SECRET_NAMES[api]} environment variable.`,
+        `The ${API_NAMES[api]} is not configured. ${howToAddCredentials(api)}`,
       );
     }
 

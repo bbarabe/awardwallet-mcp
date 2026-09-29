@@ -1,0 +1,37 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "awardwallet",
+  "version": "0.1.0",
+  "description": "Unofficial AwardWallet plugin: loyalty balances, elite status, expirations, account history and trips from AwardWallet, plus every AwardWallet API. Runs on your computer; your API key stays there.",
+  "author": {
+    "name": "Benoit Barabe",
+    "url": "https://github.com/bbarabe"
+  },
+  "homepage": "https://github.com/bbarabe/awardwallet-mcp",
+  "repository": "https://github.com/bbarabe/awardwallet-mcp",
+  "license": "MIT",
+  "keywords": ["awardwallet", "loyalty", "miles", "points", "travel", "rewards"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "AwardWallet",
+        "shortDescription": "Your miles, points and trips",
+        "longDescription": "Ask about the airline miles, hotel points and credit-card rewards you track in AwardWallet: balances, elite status, what expires soon, transaction history and upcoming trips, for you and the people who share their accounts with your AwardWallet Business account. Balances are AwardWallet's latest update of each account, not live checks. Needs AwardWallet Plus and a free AwardWallet Business account for the API key; the plugin asks for the key on a page on your computer, never in the chat. Runs locally and talks only to AwardWallet. Unofficial: not affiliated with or endorsed by AwardWallet.",
+        "developerName": "Benoit Barabe (unofficial)",
+        "category": "Travel",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://github.com/bbarabe/awardwallet-mcp",
+        "supportURL": "https://github.com/bbarabe/awardwallet-mcp/issues",
+        "defaultPrompt": [
+          "Which of my points, certificates or elite statuses expire in the next 90 days?",
+          "What are my airline and hotel balances?",
+          "What trips do we have coming up, with confirmation numbers?"
+        ],
+        "brandColor": "#1464D8",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png"
+      },
+      "onboardingSkill": "./skills/get-started/SKILL.md"
+    }
+  }
+}

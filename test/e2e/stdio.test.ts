@@ -33,7 +33,7 @@ describe("bundled server over stdio", () => {
     expect(client.getServerVersion()).toMatchObject({ name: "awardwallet", version: "0.1.0" });
     expect(client.getInstructions()).toContain("list_loyalty_accounts");
     const { tools } = await client.listTools();
-    expect(tools.length).toBe(11);
+    expect(tools.length).toBe(12);
   });
 
   it("answers a balance question end to end", async () => {
@@ -64,7 +64,8 @@ describe("MCPB-style launch", () => {
   async function launch(env: Record<string, string>) {
     copyFileSync("dist/awardwallet-mcp.mjs", join(dir, "awardwallet-mcp.mjs"));
     const client = new Client({ name: "mcpb", version: "1.0.0" });
-    const base = { PATH: process.env.PATH ?? "", SystemRoot: process.env.SystemRoot ?? "" };
+    // PLUGIN_DATA keeps the settings file in the temp folder, away from this machine's real one.
+    const base = { PATH: process.env.PATH ?? "", SystemRoot: process.env.SystemRoot ?? "", PLUGIN_DATA: dir };
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(dir, "awardwallet-mcp.mjs")], env: { ...base, ...env }, cwd: dir, stderr: "ignore" }));
     return client;
   }
@@ -82,9 +83,9 @@ describe("MCPB-style launch", () => {
     const data = JSON.parse((result.content[0] as { text: string }).text);
     expect(data.mode).toBe("live");
     expect(data.apis[0].configured).toBe(false);
-    // A key saved by `login` can't be read here, so point to the extension's settings instead.
+    // A key saved by `login` can't be read here, so the setup page is the way in.
     expect(data.credentialStore).toMatch(/^unavailable/);
-    expect(data.setupHelp).toMatch(/Settings → Extensions → AwardWallet/);
+    expect(data.setupHelp).toMatch(/connect_awardwallet/);
     await client.close();
   });
 });

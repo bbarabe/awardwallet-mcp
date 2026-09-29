@@ -2,7 +2,7 @@
   "name": "awardwallet-mcp",
   "version": "0.1.0",
   "private": true,
-  "description": "Local MCP server for AwardWallet: loyalty balances, account history, travel timeline and every AwardWallet API, for Claude Desktop, Claude Code and OpenClaw.",
+  "description": "Local MCP server for AwardWallet: loyalty balances, account history, travel timeline and every AwardWallet API, for Claude Desktop, ChatGPT, Codex, Claude Code and OpenClaw.",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -12,6 +12,8 @@
     "points",
     "travel",
     "claude",
+    "chatgpt",
+    "codex",
     "openclaw"
   ],
   "license": "MIT",
@@ -40,7 +42,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "inspect": "npx @modelcontextprotocol/inspector node dist/awardwallet-mcp.mjs",
-    "pack:mcpb": "node scripts/build.mjs && node scripts/pack-mcpb.mjs"
+    "pack:mcpb": "node scripts/build.mjs && node scripts/pack-mcpb.mjs",
+    "pack:plugin": "node scripts/build.mjs && node scripts/pack-plugin.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "~1.30.1",

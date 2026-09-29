@@ -1,11 +1,11 @@
 /** The long tail: every raw AwardWallet API operation, behind search + separate read and write tools. */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { API_NAMES, type AwardWalletClient } from "../awardwallet/client.js";
+import { API_NAMES, type AwardWalletClient, howToAddCredentials } from "../awardwallet/client.js";
 import { availableOperations, describeOperation, executeCall, findOperation, prepareCall, searchOperations, secretsToCollect } from "../catalog/index.js";
 import type { ApiId, ApiOperation } from "../catalog/types.js";
 import type { AppConfig } from "../config.js";
-import type { SecureInputServer } from "../secure-input.js";
+import { apiCallRequest, type SecureInputServer } from "../secure-input.js";
 import { fail, guard, ok } from "./results.js";
 
 const API_IDS = Object.keys(API_NAMES) as [ApiId, ...ApiId[]];
@@ -30,7 +30,7 @@ function resolve(client: AwardWalletClient, id: string): ApiOperation | string {
   const op = findOperation(id);
   if (!op) return `Unknown operation '${id}'. Use search_api_operations to find valid ids.`;
   if (!client.isConfigured(op.api)) {
-    return `${op.id} belongs to the ${API_NAMES[op.api]}, which is not configured (run \`awardwallet-mcp login --api ${op.api}\` or set its environment variable).`;
+    return `${op.id} belongs to the ${API_NAMES[op.api]}, which is not configured. ${howToAddCredentials(op.api)}`;
   }
   return op;
 }
@@ -118,7 +118,7 @@ export function registerCatalogTools(server: McpServer, ctx: CatalogContext): vo
         const fields = secretsToCollect(op, collectSecrets);
         if (fields.length) {
           if (!ctx.secureInput) return fail("Secure input is unavailable on this server.");
-          const link = await ctx.secureInput.create(call, fields);
+          const link = await ctx.secureInput.create(apiCallRequest(client, call, fields));
           return ok({
             status: "waiting_for_secure_input",
             operation: op.id,
@@ -150,7 +150,7 @@ export function registerCatalogTools(server: McpServer, ctx: CatalogContext): vo
         const sub = ctx.secureInput?.get(submissionId);
         if (!sub) return fail("Unknown or expired submission. Results are kept for an hour; start the request again if needed.");
         return ok({
-          operation: sub.call.op.id,
+          operation: sub.request.operation,
           status: sub.status,
           response: sub.status === "completed" ? sub.response : undefined,
           error: sub.error,

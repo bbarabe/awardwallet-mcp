@@ -1,9 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
-import { resolveCredential } from "../../src/credentials.js";
+import { resolveCredential, saveToSettingsFile, settingsFilePath } from "../../src/credentials.js";
 import { VERSION } from "../../src/server.js";
 
 const dir = mkdtempSync(join(tmpdir(), "awmcp-"));
@@ -15,6 +15,29 @@ describe("credentials", () => {
     writeFileSync(file, "from-file\n");
     expect(await resolveCredential("AW_API_KEY", { AW_API_KEY: " from-env ", AW_API_KEY_FILE: file })).toEqual({ value: "from-env", source: "environment" });
     expect(await resolveCredential("AW_API_KEY", { AW_API_KEY_FILE: file })).toEqual({ value: "from-file", source: "file" });
+  });
+
+  it("saves to the plugin's data folder, keeps other entries, and ranks last", async () => {
+    const pluginData = join(dir, "plugin-data");
+    const file = settingsFilePath({ PLUGIN_DATA: pluginData });
+    expect(file).toBe(join(pluginData, "credentials.json"));
+    saveToSettingsFile(file, "AW_API_KEY", "saved-key");
+    saveToSettingsFile(file, "AW_WEB_PARSING_CREDENTIALS", "user:pass");
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ AW_API_KEY: "saved-key", AW_WEB_PARSING_CREDENTIALS: "user:pass" });
+
+    const env = { PLUGIN_DATA: pluginData };
+    const found = await resolveCredential("AW_API_KEY", env);
+    // A key in this machine's credential store would win; only assert when there is none.
+    if (found?.source !== "credential store") expect(found).toEqual({ value: "saved-key", source: "settings file" });
+    expect(await resolveCredential("AW_API_KEY", { ...env, AW_API_KEY: "from-env" })).toEqual({ value: "from-env", source: "environment" });
+  });
+
+  it("ignores a damaged settings file instead of failing to start", async () => {
+    const pluginData = join(dir, "damaged");
+    mkdirSync(pluginData);
+    writeFileSync(join(pluginData, "credentials.json"), "{ not json");
+    const found = await resolveCredential("AW_WEB_PARSING_CREDENTIALS", { PLUGIN_DATA: pluginData });
+    if (found?.source !== "credential store") expect(found).toBeUndefined();
   });
 
   it("reports an unreadable secret file clearly", async () => {

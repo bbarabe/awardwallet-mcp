@@ -159,6 +159,10 @@
     {
       "name": "get_secure_input_result",
       "description": "Result of a request completed on the secure input page."
+    },
+    {
+      "name": "connect_awardwallet",
+      "description": "Link to a local page where the user enters the API key, checked and saved on this computer."
     }
   ],
   "compatibility": {

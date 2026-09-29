@@ -1,5 +1,5 @@
 import type { ApiId } from "./catalog/types.js";
-import { CREDENTIAL_NAMES, type CredentialSource, envValue, resolveCredential } from "./credentials.js";
+import { CREDENTIAL_NAMES, type CredentialSource, envValue, resolveCredential, settingsFilePath } from "./credentials.js";
 
 export const ACCOUNT_ACCESS_LEVELS = ["no_access", "read_numbers", "read_balances", "read_all", "full_control"] as const;
 export const TRIP_ACCESS_LEVELS = ["no_access", "read_all", "full_control"] as const;
@@ -19,6 +19,8 @@ export interface AppConfig {
   /** X-Authentication header value per API; absent when that API is not configured. */
   credentials: Partial<Record<ApiId, string>>;
   credentialSources: Partial<Record<ApiId, CredentialSource>>;
+  /** Where connect_awardwallet saves credentials. */
+  settingsFile: string;
   secureInput: {
     /** Fixed port for the local secure-input page (0 = pick a free one). */
     port: number;
@@ -58,6 +60,7 @@ export async function loadConfig(env: NodeJS.ProcessEnv = process.env): Promise<
     emailRegion: get("AW_EMAIL_API_REGION")?.toLowerCase() === "eu" ? "eu" : "us",
     credentials,
     credentialSources,
+    settingsFile: settingsFilePath(env),
     secureInput: {
       port: Number.isInteger(port) && port >= 0 && port < 65536 ? port : 0,
       publicUrl: publicUrl ? publicUrl.replace(/\/+$/, "") : undefined,

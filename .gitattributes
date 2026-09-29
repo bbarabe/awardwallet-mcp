@@ -1,3 +1,4 @@
 * text=auto eol=lf
 *.mcpb binary
 *.png binary
+*.cmd text eol=crlf
