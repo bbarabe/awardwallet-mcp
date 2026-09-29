@@ -14,6 +14,11 @@ for (const [file, manifest] of [["plugin/plugin.json", plugin], ["plugin/.claude
   if (manifest.version !== pkg.version) throw new Error(`${file} version ${manifest.version} != package.json ${pkg.version}`);
 }
 if (claude.name !== plugin.name) throw new Error(`plugin names differ: ${plugin.name} (ChatGPT) vs ${claude.name} (Claude)`);
+// The Claude marketplace on the default branch (claude.ai can't add a branch) points into the published one.
+const rootEntry = JSON.parse(readFileSync(".claude-plugin/marketplace.json", "utf8")).plugins.find((p) => p.name === claude.name);
+if (!rootEntry || rootEntry.source?.path !== `plugins/${claude.name}` || rootEntry.source?.ref !== "plugin") {
+  throw new Error(`.claude-plugin/marketplace.json must list ${claude.name} at plugins/${claude.name} on the plugin branch`);
+}
 if (!existsSync("dist/awardwallet-mcp.mjs")) throw new Error("Build the server first (npm run build).");
 
 // The checks a host would fail on silently: schema ids, the name, and every file the manifests point to.
