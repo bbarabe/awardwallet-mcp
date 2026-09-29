@@ -42,6 +42,19 @@ Works on Windows and Mac. Claude Desktop includes everything needed to run it.
 
 To change the key later, go to **Settings → Extensions → AwardWallet → Configure**.
 
+#### Claude Code and Cowork
+
+The same plugin as for ChatGPT, without downloading anything. It works in Claude Code (the Claude Desktop **Code** tab, the terminal and VS Code) and in Cowork. Regular Claude chats can't run plugins that run on your computer; use the [Claude Desktop extension](#claude-desktop) for those.
+
+1. Add the marketplace `bbarabe/awardwallet-mcp#plugin`:
+   - **Claude Desktop:** **Customize → Plugins → Add → Add marketplace**, then enter it as the repository.
+   - **Terminal:** `claude plugin marketplace add bbarabe/awardwallet-mcp#plugin`
+2. Add **AwardWallet** from the plugin list (terminal: `claude plugin install awardwallet@awardwallet-mcp`).
+3. Start a new session and ask Claude to *"set up AwardWallet"*. It gives you a link to a **secure connection page** on your computer.
+4. Paste your API key on that page and select **Check and save**. Then tell Claude you're done.
+
+Needs [Node.js](https://nodejs.org) 20.10 or later, unless the ChatGPT desktop app is installed: the plugin uses ChatGPT's copy of Node when it finds one.
+
 #### ChatGPT desktop app
 
 Works on Windows and Mac, in the ChatGPT desktop app's Codex and Work modes. ChatGPT includes everything needed to run it.
