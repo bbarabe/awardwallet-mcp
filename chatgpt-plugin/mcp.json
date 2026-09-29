@@ -4,7 +4,8 @@
     "awardwallet": {
       "type": "stdio",
       "command": "./bin/awardwallet-mcp",
-      "args": ["${PLUGIN_ROOT}/server/awardwallet-mcp.mjs"]
+      "args": ["${PLUGIN_ROOT}/server/awardwallet-mcp.mjs"],
+      "cwd": "${PLUGIN_DATA}"
     }
   }
 }
