@@ -56,10 +56,55 @@ export class AwardWalletApiError extends Error {
     readonly status: number,
     message: string,
     readonly upstreamMessage?: string,
+    /** Set when AwardWallet has locked this computer out after too many invalid credentials. */
+    readonly lockedUntil?: number,
   ) {
     super(message);
     this.name = "AwardWalletApiError";
   }
+}
+
+/*
+ * AwardWallet locks a computer out for a while after too many invalid credentials. So once it rejects
+ * a credential, or locks us out, don't ask again: fail locally until the credential changes or the
+ * lockout ends. Kept per process, since the lockout is per computer, not per client object.
+ */
+const rejectedCredentials = new Map<ApiId, string>();
+const lockouts = new Map<ApiId, number>();
+const LOCKOUT_PATTERN = /locked out/i;
+
+export function resetRequestGuards(): void {
+  rejectedCredentials.clear();
+  lockouts.clear();
+}
+
+function lockoutError(api: ApiId, until: number): AwardWalletApiError {
+  const minutes = Math.max(1, Math.ceil((until - Date.now()) / 60_000));
+  const time = new Date(until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new AwardWalletApiError(
+    api,
+    403,
+    `AwardWallet has temporarily locked this computer out of the ${API_NAMES[api]} after too many invalid credentials. Wait until ${time} (about ${minutes} minute${minutes === 1 ? "" : "s"}) before trying again, and don't enter the key again before then: every attempt during the lockout fails.`,
+    undefined,
+    until,
+  );
+}
+
+/** The lockout in effect for an API, if AwardWallet reported one that hasn't ended. */
+export function currentLockout(api: ApiId): AwardWalletApiError | undefined {
+  const until = lockouts.get(api);
+  return until !== undefined && until > Date.now() ? lockoutError(api, until) : undefined;
+}
+
+/** A request that would certainly fail, answered without contacting AwardWallet. */
+function blockedRequest(api: ApiId, credential: string): AwardWalletApiError | undefined {
+  const until = lockouts.get(api);
+  if (until !== undefined && until > Date.now()) return lockoutError(api, until);
+  if (until !== undefined) lockouts.delete(api);
+  if (rejectedCredentials.get(api) === credential) {
+    return new AwardWalletApiError(api, 401, `AwardWallet already rejected these credentials for the ${API_NAMES[api]} (401), so they weren't sent again. ${howToAddCredentials(api)}`);
+  }
+  return undefined;
 }
 
 export type QueryValue = string | number | boolean | undefined | null | readonly (string | number | boolean)[];
@@ -165,6 +210,11 @@ export class AwardWalletClient {
       );
     }
 
+    if (!this.config.mockMode) {
+      const blocked = blockedRequest(api, credential);
+      if (blocked) throw blocked;
+    }
+
     const url = buildUrl(apiBaseUrl(api, this.config), path, options.query);
     const bodyText = options.body === undefined ? undefined : JSON.stringify(options.body);
     const cacheKey = options.cacheTtlMs ? `${api} ${method} ${url.href} ${bodyText ?? ""}` : undefined;
@@ -197,8 +247,16 @@ export class AwardWalletClient {
 
     const data = await parseBody(response!);
     if (!response!.ok) {
+      const status = response!.status;
       const detail = upstreamMessage(data);
-      throw new AwardWalletApiError(api, response!.status, describeFailure(api, response!.status, detail), detail);
+      if (!this.config.mockMode && detail && LOCKOUT_PATTERN.test(detail)) {
+        const minutes = Number(detail.match(/(\d+)\s*minute/i)?.[1] ?? 10);
+        const until = Date.now() + minutes * 60_000;
+        lockouts.set(api, until);
+        throw lockoutError(api, until);
+      }
+      if (status === 401 && !this.config.mockMode) rejectedCredentials.set(api, credential);
+      throw new AwardWalletApiError(api, status, describeFailure(api, status, detail), detail);
     }
 
     if (cacheKey) {

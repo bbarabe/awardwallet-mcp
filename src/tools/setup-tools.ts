@@ -1,7 +1,7 @@
 /** connect_awardwallet: lets the user add or replace API credentials without pasting them into the chat. */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { API_NAMES } from "../awardwallet/client.js";
+import { API_NAMES, currentLockout } from "../awardwallet/client.js";
 import type { ApiId } from "../catalog/types.js";
 import type { AppConfig } from "../config.js";
 import { CREDENTIAL_NAMES } from "../credentials.js";
@@ -35,6 +35,8 @@ export function registerSetupTools(server: McpServer, ctx: { config: AppConfig; 
             `The ${API_NAMES[api]} credentials come from the ${CREDENTIAL_NAMES[api]}${source === "file" ? "_FILE" : ""} environment variable in this app's MCP server settings, which takes precedence. Change or remove it there instead.`,
           );
         }
+        const lockout = currentLockout(api);
+        if (lockout) return fail(lockout.message);
         const link = await secureInput.create(credentialRequest(api, config));
         return ok({
           status: "waiting_for_secure_input",

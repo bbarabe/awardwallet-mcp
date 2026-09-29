@@ -6,7 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { clearResponseCache } from "../../src/awardwallet/client.js";
+import { clearResponseCache, resetRequestGuards } from "../../src/awardwallet/client.js";
 import { localDate } from "../../src/awardwallet/format.js";
 import { loadConfig } from "../../src/config.js";
 import type { SecureInputServer } from "../../src/secure-input.js";
@@ -22,8 +22,9 @@ function dataDir(): string {
   return dir;
 }
 
-async function connect(env: Record<string, string>) {
+async function connect(env: Record<string, string>, { keepGuards = false } = {}) {
   clearResponseCache();
+  if (!keepGuards) resetRequestGuards();
   const config = await loadConfig(env);
   const { server, secureInput } = createAwardWalletServer(config);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -403,17 +404,81 @@ describe("unconfigured server", () => {
 
 describe("connect_awardwallet", () => {
   const GOOD_KEY = "good-key-0123456789";
+  // Stands in for the request that tips AwardWallet into its brute-force lockout.
+  const LOCKOUT_KEY = "lockout-key-0000";
   const realFetch = globalThis.fetch;
   const form = { "Content-Type": "application/x-www-form-urlencoded" };
+  let upstreamCalls = 0;
 
   beforeAll(() => {
     // AwardWallet accepts GOOD_KEY only; the test's own requests to the local page pass through.
     vi.stubGlobal("fetch", (input: string | URL | Request, init?: RequestInit) => {
       const request = new Request(input, init);
       if (new URL(request.url).hostname !== "business.awardwallet.com") return realFetch(input, init);
-      if (request.headers.get("X-Authentication") !== GOOD_KEY) return Promise.resolve(new Response('{"error":"Invalid API key"}', { status: 401 }));
+      upstreamCalls++;
+      const key = request.headers.get("X-Authentication");
+      if (key === LOCKOUT_KEY) {
+        return Promise.resolve(Response.json({ message: "You have been locked out from AwardWallet API for 10 minutes, due to a large number of invalid login attempts" }, { status: 403 }));
+      }
+      if (key !== GOOD_KEY) return Promise.resolve(new Response('{"error":"Invalid API key"}', { status: 401 }));
       return Promise.resolve(Response.json({ connectedUsers: [] }));
     });
+  });
+
+  const submit = (url: string, key: string) => realFetch(url, { method: "POST", headers: form, body: `field0=${key}&action=send` });
+
+  it("never resends a rejected key, and closes the link after three wrong ones", async () => {
+    const { client, secureInput } = await connect({ PLUGIN_DATA: dataDir() });
+    const started = await call(client, "connect_awardwallet");
+    const url = started.data.url as string;
+    const before = upstreamCalls;
+
+    expect((await submit(url, "wrong-key-1111")).status).toBe(400);
+    expect(upstreamCalls - before).toBe(1);
+    // The same wrong key again is refused without asking AwardWallet.
+    expect((await submit(url, "wrong-key-1111")).status).toBe(400);
+    expect(upstreamCalls - before).toBe(1);
+
+    const third = await submit(url, "wrong-key-2222");
+    expect(third.status).toBe(200);
+    expect(await third.text()).toContain("this link is closed");
+    expect(upstreamCalls - before).toBe(2);
+    const result = await call(client, "get_secure_input_result", { submissionId: started.data.submissionId });
+    expect(result.data.status).toBe("failed");
+    expect((await submit(url, GOOD_KEY)).status).toBe(409);
+    await secureInput?.close();
+    await client.close();
+  });
+
+  it("stops contacting AwardWallet during a lockout", async () => {
+    const { client, secureInput } = await connect({ PLUGIN_DATA: dataDir() });
+    const started = await call(client, "connect_awardwallet");
+    const url = started.data.url as string;
+    const before = upstreamCalls;
+
+    const locked = await submit(url, LOCKOUT_KEY);
+    expect(locked.status).toBe(400);
+    expect(await locked.text()).toContain("locked this computer out");
+    // Even the right key waits: nothing goes out until the lockout ends, and the form stays up.
+    const retry = await submit(url, GOOD_KEY);
+    expect(retry.status).toBe(400);
+    expect(await retry.text()).toContain("locked this computer out");
+    expect(upstreamCalls - before).toBe(1);
+
+    const again = await call(client, "connect_awardwallet");
+    expect(again.isError).toBe(true);
+    expect(again.text).toMatch(/Wait until .* before trying again/);
+    await secureInput?.close();
+    await client.close();
+
+    // A server with a working key waits too, without sending anything.
+    const { client: other, secureInput: otherInput } = await connect({ PLUGIN_DATA: dataDir(), AW_API_KEY: GOOD_KEY }, { keepGuards: true });
+    const people = await call(other, "list_people");
+    expect(people.isError).toBe(true);
+    expect(people.text).toContain("locked this computer out");
+    expect(upstreamCalls - before).toBe(1);
+    await otherInput?.close();
+    await other.close();
   });
   afterAll(() => {
     vi.unstubAllGlobals();
