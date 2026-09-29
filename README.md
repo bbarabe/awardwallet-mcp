@@ -264,7 +264,7 @@ npm run pack:plugin # build/chatgpt-marketplace: plugin marketplace for ChatGPT 
 
 To release, bump the version in `package.json`, `mcpb/manifest.json`, `plugin/plugin.json` and `src/server.ts`, then push a matching tag (for example `v0.2.0`). The release workflow tests and builds, attaches `awardwallet-mcp.mcpb` and `awardwallet-mcp.mjs` to a new GitHub release, and publishes the plugin to the `plugin` branch that ChatGPT installs from.
 
-The plugin's launchers (`plugin/bin/`) run the server with the Node.js runtime that ships with ChatGPT and Codex, and fall back to a Node.js on `PATH`.
+The plugin's launchers (`plugin/scripts/`; Claude refuses plugins with a top-level `bin/` in chat and Cowork) run the server with the Node.js runtime that ships with ChatGPT and Codex, and fall back to a Node.js on `PATH`.
 
 ## Contributing
 
