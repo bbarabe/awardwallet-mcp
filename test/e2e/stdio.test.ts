@@ -89,3 +89,31 @@ describe("MCPB-style launch", () => {
     await client.close();
   });
 });
+
+describe("shutdown", () => {
+  // Shutdown lets the event loop drain rather than calling process.exit() right away (that crashed
+  // libuv on Windows after a real AwardWallet request with the keyring module loaded, which these
+  // offline tests can't reproduce). Check that draining still ends the process promptly by itself.
+  it("exits on its own, cleanly, when the client disconnects after tool calls", async () => {
+    let stderr = "";
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: ["dist/awardwallet-mcp.mjs"],
+      env: { ...(process.env as Record<string, string>), AW_MOCK_MODE: "true" },
+      stderr: "pipe",
+    });
+    transport.stderr?.on("data", (chunk) => (stderr += String(chunk)));
+    const client = new Client({ name: "shutdown", version: "1.0.0" });
+    await client.connect(transport);
+    const pid = transport.pid!;
+    await client.callTool({ name: "get_status", arguments: {} });
+    await client.callTool({ name: "list_loyalty_accounts", arguments: {} });
+    const started = Date.now();
+    await client.close();
+    // close() waits up to 2 s for the process to exit on its own before signalling it.
+    expect(Date.now() - started).toBeLessThan(1_500);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(stderr).not.toContain("Assertion failed");
+    expect(() => process.kill(pid, 0)).toThrow();
+  });
+});
