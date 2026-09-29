@@ -39905,7 +39905,7 @@ function registerSetupTools(server, ctx) {
 }
 
 // src/server.ts
-var VERSION = "0.1.0";
+var VERSION = "0.2.0";
 var INSTRUCTIONS = `AwardWallet tracks loyalty programs (airline miles, hotel points, credit-card rewards) and travel reservations for the people connected to an AwardWallet Business account.
 Balances are AwardWallet's last successful update of each account (see lastUpdated), not live checks.
 list_loyalty_accounts answers most balance, elite status and expiration questions; get_loyalty_account adds one account's properties and transaction history; get_travel_timeline covers trips.
