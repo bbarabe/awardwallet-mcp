@@ -3,7 +3,7 @@
 // .agents/plugins/marketplace.json and the plugin's plugin.json + mcp.json; Claude reads
 // .claude-plugin/marketplace.json and the plugin's .claude-plugin/plugin.json. The release workflow
 // publishes it to the `plugin` branch; for local testing, add the folder itself. In ChatGPT the
-// launchers in bin/ start the server with ChatGPT's own Node.js, so users don't have to install Node.
+// launchers in scripts/ start the server with ChatGPT's own Node.js, so users don't have to install Node.
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -36,6 +36,8 @@ for (const path of referenced.filter(Boolean)) {
   if (!existsSync(file) && !existsSync(`${file}.cmd`)) fail(`${path} is missing`);
 }
 if ([ui.interface?.shortDescription, ui.interface?.displayName].some((text) => (text ?? "").length > 30)) fail("displayName and shortDescription must be 30 characters or fewer");
+// claude.ai (chat and Cowork) refuses to install a plugin that has a top-level bin/ directory.
+if (existsSync("plugin/bin")) fail("don't use a top-level bin/ directory; claude.ai refuses such plugins");
 
 const root = "build/plugin-marketplace";
 const dir = `${root}/plugins/${plugin.name}`;
@@ -47,7 +49,7 @@ mkdirSync(`${dir}/server`, { recursive: true });
 cpSync("dist/awardwallet-mcp.mjs", `${dir}/server/awardwallet-mcp.mjs`);
 
 // Line endings and modes don't depend on the checkout: cmd.exe wants CRLF, sh wants LF and +x.
-const launcher = `${dir}/bin/awardwallet-mcp`;
+const launcher = `${dir}/scripts/awardwallet-mcp`;
 writeFileSync(launcher, readFileSync(launcher, "utf8").replace(/\r\n/g, "\n"));
 chmodSync(launcher, 0o755);
 writeFileSync(`${launcher}.cmd`, readFileSync(`${launcher}.cmd`, "utf8").replace(/\r?\n/g, "\r\n"));

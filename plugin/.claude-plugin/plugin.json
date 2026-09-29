@@ -13,7 +13,7 @@
   "keywords": ["awardwallet", "loyalty", "miles", "points", "travel", "rewards"],
   "mcpServers": {
     "awardwallet": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/bin/awardwallet-mcp",
+      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/awardwallet-mcp",
       "args": ["${CLAUDE_PLUGIN_ROOT}/server/awardwallet-mcp.mjs"],
       "env": { "PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}" }
     }

@@ -118,11 +118,11 @@ describe("shutdown", () => {
   });
 });
 
-// The ChatGPT / Codex plugin starts the server through bin/awardwallet-mcp(.cmd), which looks for
+// The ChatGPT / Codex plugin starts the server through scripts/awardwallet-mcp(.cmd), which looks for
 // ChatGPT's bundled Node.js and falls back to one on PATH (the case exercised here).
 describe("plugin launcher", () => {
   it("starts the server and answers over stdio", async () => {
-    const launcher = join("plugin", "bin", process.platform === "win32" ? "awardwallet-mcp.cmd" : "awardwallet-mcp");
+    const launcher = join("plugin", "scripts", process.platform === "win32" ? "awardwallet-mcp.cmd" : "awardwallet-mcp");
     const client = new Client({ name: "launcher", version: "1.0.0" });
     await client.connect(
       new StdioClientTransport({
