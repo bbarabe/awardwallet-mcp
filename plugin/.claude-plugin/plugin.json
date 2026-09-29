@@ -1,7 +1,7 @@
 {
   "name": "awardwallet",
   "displayName": "AwardWallet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unofficial AwardWallet plugin: loyalty balances, elite status, expirations, account history and trips from AwardWallet, plus every AwardWallet API. Runs on your computer; your API key stays there.",
   "author": {
     "name": "Benoit Barabe",

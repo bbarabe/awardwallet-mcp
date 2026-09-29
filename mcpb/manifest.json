@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "awardwallet-mcp",
   "display_name": "AwardWallet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Loyalty balances, elite status, expirations, account history and trips from AwardWallet, plus every AwardWallet API.",
   "long_description": "Ask about your airline miles, hotel points and credit-card rewards tracked in AwardWallet: balances, elite status, what expires soon, full transaction history, and upcoming trips. Uses the AwardWallet Business Account Access API, and optionally AwardWallet's paid Web Parsing, Email Parsing, Credit Card Bonus and Flight/Hotel Award Search APIs. Passwords and tokens needed by those APIs are typed into a one-time local page, never into the chat.",
   "author": {

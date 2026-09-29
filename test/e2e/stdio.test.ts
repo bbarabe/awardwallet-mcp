@@ -1,11 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+const PKG_VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version as string;
 
 // Launches dist/awardwallet-mcp.mjs exactly as an MCP client would.
 describe("bundled server over stdio", () => {
@@ -30,7 +32,7 @@ describe("bundled server over stdio", () => {
   });
 
   it("initializes with instructions and the expected tools", async () => {
-    expect(client.getServerVersion()).toMatchObject({ name: "awardwallet", version: "0.1.0" });
+    expect(client.getServerVersion()).toMatchObject({ name: "awardwallet", version: PKG_VERSION });
     expect(client.getInstructions()).toContain("list_loyalty_accounts");
     const { tools } = await client.listTools();
     expect(tools.length).toBe(12);
@@ -52,7 +54,7 @@ describe("command line", () => {
     const help = execFileSync(process.execPath, ["dist/awardwallet-mcp.mjs", "--help"], { encoding: "utf8" });
     expect(help).toContain("awardwallet-mcp login");
     const version = execFileSync(process.execPath, ["dist/awardwallet-mcp.mjs", "--version"], { encoding: "utf8" });
-    expect(version.trim()).toBe("0.1.0");
+    expect(version.trim()).toBe(PKG_VERSION);
   });
 });
 
