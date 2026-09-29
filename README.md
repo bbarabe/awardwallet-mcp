@@ -147,7 +147,7 @@ Or run your build as a plain MCP server:
 codex mcp add awardwallet -- node /absolute/path/to/awardwallet-mcp/dist/awardwallet-mcp.mjs
 ```
 
-To try an unreleased plugin build, run `npm run pack:plugin` and add `build/chatgpt-marketplace` as a marketplace, either from the ChatGPT **Plugins → Add → Add a marketplace** dialog or with `codex plugin marketplace add`.
+To try an unreleased plugin build, run `npm run pack:plugin` and add `build/plugin-marketplace` as a marketplace: in ChatGPT with **Plugins → Add → Add a marketplace** or `codex plugin marketplace add`, in Claude Code with `claude plugin marketplace add`.
 
 **OpenClaw:**
 
@@ -248,7 +248,7 @@ npm test            # unit + end-to-end tests (demo data, no network, no credent
 npm run typecheck
 npm run inspect     # MCP Inspector against the build (set AW_MOCK_MODE=true for demo data)
 npm run pack:mcpb   # dist/awardwallet-mcp.mcpb
-npm run pack:plugin # build/chatgpt-marketplace: plugin marketplace for ChatGPT desktop and Codex
+npm run pack:plugin # build/plugin-marketplace: plugin marketplace for ChatGPT, Codex and Claude
 ```
 
 | Path | Contents |
