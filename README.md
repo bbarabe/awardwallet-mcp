@@ -258,13 +258,13 @@ npm run pack:plugin # build/plugin-marketplace: plugin marketplace for ChatGPT, 
 | `src/catalog/` | Raw API operations, one file per AwardWallet API, each with a Zod input schema |
 | `src/secure-input.ts` | The local secret-entry page |
 | `src/setup.ts` | Checking and saving API credentials (`connect_awardwallet`, `login`) |
-| `plugin/` | ChatGPT / Codex plugin: manifest, MCP config, Node launchers, skills and icons |
+| `plugin-src/` | The plugin for ChatGPT, Codex and Claude: both manifests, MCP config, Node launchers, skills and icons. It isn't named `plugin/` because ChatGPT's `git checkout plugin` would confuse it with the `plugin` branch |
 | `src/cli.ts` | `login`, `logout`, `status` |
 | `test/` | Unit tests, and end-to-end tests that run the built server over stdio |
 
-To release, bump the version in `package.json`, `mcpb/manifest.json`, `plugin/plugin.json`, `plugin/.claude-plugin/plugin.json` and `src/server.ts`, then push a matching tag (for example `v0.2.0`). The release workflow tests and builds, attaches `awardwallet-mcp.mcpb` and `awardwallet-mcp.mjs` to a new GitHub release, and publishes the plugin to the `plugin` branch that ChatGPT and Claude install from.
+To release, bump the version in `package.json`, `mcpb/manifest.json`, `plugin-src/plugin.json`, `plugin-src/.claude-plugin/plugin.json` and `src/server.ts`, then push a matching tag (for example `v0.2.0`). The release workflow tests and builds, attaches `awardwallet-mcp.mcpb` and `awardwallet-mcp.mjs` to a new GitHub release, and publishes the plugin to the `plugin` branch that ChatGPT and Claude install from.
 
-The plugin's launchers (`plugin/scripts/`; Claude refuses plugins with a top-level `bin/` in chat and Cowork) run the server with the Node.js runtime that ships with ChatGPT and Codex, and fall back to a Node.js on `PATH`.
+The plugin's launchers (`plugin-src/scripts/`; Claude refuses plugins with a top-level `bin/` in chat and Cowork) run the server with the Node.js runtime that ships with ChatGPT and Codex, and fall back to a Node.js on `PATH`.
 
 ## Contributing
 

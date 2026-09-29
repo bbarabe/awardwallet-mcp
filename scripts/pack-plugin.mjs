@@ -1,5 +1,5 @@
 // Assembles build/plugin-marketplace: one plugin marketplace for ChatGPT / Codex and Claude (Cowork and
-// Claude Code) holding the AwardWallet plugin (plugin/ plus the bundled server). ChatGPT reads
+// Claude Code) holding the AwardWallet plugin (plugin-src/ plus the bundled server). ChatGPT reads
 // .agents/plugins/marketplace.json and the plugin's plugin.json + mcp.json; Claude reads
 // .claude-plugin/marketplace.json and the plugin's .claude-plugin/plugin.json. The release workflow
 // publishes it to the `plugin` branch; for local testing, add the folder itself. In ChatGPT the
@@ -7,10 +7,10 @@
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-const plugin = JSON.parse(readFileSync("plugin/plugin.json", "utf8"));
-const mcp = JSON.parse(readFileSync("plugin/mcp.json", "utf8"));
-const claude = JSON.parse(readFileSync("plugin/.claude-plugin/plugin.json", "utf8"));
-for (const [file, manifest] of [["plugin/plugin.json", plugin], ["plugin/.claude-plugin/plugin.json", claude]]) {
+const plugin = JSON.parse(readFileSync("plugin-src/plugin.json", "utf8"));
+const mcp = JSON.parse(readFileSync("plugin-src/mcp.json", "utf8"));
+const claude = JSON.parse(readFileSync("plugin-src/.claude-plugin/plugin.json", "utf8"));
+for (const [file, manifest] of [["plugin-src/plugin.json", plugin], ["plugin-src/.claude-plugin/plugin.json", claude]]) {
   if (manifest.version !== pkg.version) throw new Error(`${file} version ${manifest.version} != package.json ${pkg.version}`);
 }
 if (claude.name !== plugin.name) throw new Error(`plugin names differ: ${plugin.name} (ChatGPT) vs ${claude.name} (Claude)`);
@@ -32,19 +32,21 @@ const ui = plugin.extensions?.["com.openai"] ?? {};
 const referenced = [ui.interface?.composerIcon, ui.interface?.logo, ui.onboardingSkill, ...Object.values(mcp.mcpServers).map((s) => s.command)];
 for (const path of referenced.filter(Boolean)) {
   if (!path.startsWith("./")) fail(`${path} must start with ./`);
-  const file = `plugin/${path.slice(2)}`;
+  const file = `plugin-src/${path.slice(2)}`;
   if (!existsSync(file) && !existsSync(`${file}.cmd`)) fail(`${path} is missing`);
 }
 if ([ui.interface?.shortDescription, ui.interface?.displayName].some((text) => (text ?? "").length > 30)) fail("displayName and shortDescription must be 30 characters or fewer");
 // claude.ai (chat and Cowork) refuses to install a plugin that has a top-level bin/ directory.
-if (existsSync("plugin/bin")) fail("don't use a top-level bin/ directory; claude.ai refuses such plugins");
+if (existsSync("plugin-src/bin")) fail("don't use a top-level bin/ directory; claude.ai refuses such plugins");
+// ChatGPT runs `git checkout plugin` in a clone of the default branch; a path named plugin makes that ambiguous.
+if (existsSync("plugin")) throw new Error("the repository root must not contain a path named 'plugin' (it clashes with the plugin branch)");
 
 const root = "build/plugin-marketplace";
 const dir = `${root}/plugins/${plugin.name}`;
 rmSync(root, { recursive: true, force: true });
 mkdirSync(`${root}/.agents/plugins`, { recursive: true });
 mkdirSync(`${root}/.claude-plugin`, { recursive: true });
-cpSync("plugin", dir, { recursive: true });
+cpSync("plugin-src", dir, { recursive: true });
 mkdirSync(`${dir}/server`, { recursive: true });
 cpSync("dist/awardwallet-mcp.mjs", `${dir}/server/awardwallet-mcp.mjs`);
 
