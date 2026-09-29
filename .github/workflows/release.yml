@@ -23,7 +23,7 @@ jobs:
       - name: Check the tag matches the package and manifest versions
         run: >-
           node -e "const v = process.env.GITHUB_REF_NAME.replace(/^v/, '');
-          const p = require('./package.json'), m = require('./mcpb/manifest.json'), c = require('./plugin/plugin.json'), cc = require('./plugin/.claude-plugin/plugin.json');
+          const p = require('./package.json'), m = require('./mcpb/manifest.json'), c = require('./plugin-src/plugin.json'), cc = require('./plugin-src/.claude-plugin/plugin.json');
           if ([p, m, c, cc].some((x) => x.version !== v)) { console.error('tag', v, 'package.json', p.version, 'manifest', m.version, 'plugin', c.version, 'claude plugin', cc.version); process.exit(1); }"
       - run: npm run typecheck
       - run: npm test
