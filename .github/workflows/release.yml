@@ -1,8 +1,8 @@
 name: Release
 
-# Push a tag like v0.2.0 (matching package.json, mcpb/manifest.json and plugin/plugin.json) to
+# Push a tag like v0.2.0 (matching package.json, mcpb/manifest.json and both plugin manifests) to
 # publish a release with the Claude Desktop extension and the single-file server attached, and to update
-# the plugin branch, the plugin marketplace that ChatGPT desktop and Codex install from.
+# the plugin branch, which ChatGPT, Codex and Claude install the plugin from.
 on:
   push:
     tags: ["v*"]
@@ -23,11 +23,11 @@ jobs:
       - name: Check the tag matches the package and manifest versions
         run: >-
           node -e "const v = process.env.GITHUB_REF_NAME.replace(/^v/, '');
-          const p = require('./package.json'), m = require('./mcpb/manifest.json'), c = require('./plugin/plugin.json');
-          if (p.version !== v || m.version !== v || c.version !== v) { console.error('tag', v, 'package.json', p.version, 'manifest', m.version, 'plugin', c.version); process.exit(1); }"
+          const p = require('./package.json'), m = require('./mcpb/manifest.json'), c = require('./plugin/plugin.json'), cc = require('./plugin/.claude-plugin/plugin.json');
+          if ([p, m, c, cc].some((x) => x.version !== v)) { console.error('tag', v, 'package.json', p.version, 'manifest', m.version, 'plugin', c.version, 'claude plugin', cc.version); process.exit(1); }"
       - run: npm run typecheck
       - run: npm test
-      - name: Build the server, the Claude Desktop extension and the ChatGPT plugin
+      - name: Build the server, the Claude Desktop extension and the plugin
         run: npm run pack:mcpb && node scripts/pack-plugin.mjs
       - name: Publish the release
         env:

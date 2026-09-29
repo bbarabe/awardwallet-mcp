@@ -7,7 +7,7 @@ import { registerAccountTools } from "./tools/account-tools.js";
 import { registerCatalogTools } from "./tools/catalog-tools.js";
 import { registerSetupTools } from "./tools/setup-tools.js";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 
 const INSTRUCTIONS = `AwardWallet tracks loyalty programs (airline miles, hotel points, credit-card rewards) and travel reservations for the people connected to an AwardWallet Business account.
 Balances are AwardWallet's last successful update of each account (see lastUpdated), not live checks.
