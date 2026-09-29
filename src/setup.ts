@@ -6,6 +6,8 @@ import { CREDENTIAL_NAMES, saveToSettingsFile } from "./credentials.js";
 import { InputRejectedError, type SecureRequest } from "./secure-input.js";
 
 export const KEY_PAGE = "https://business.awardwallet.com/profile/api";
+/** Wrong credentials accepted on one setup link before it closes. */
+const MAX_REJECTIONS = 3;
 
 /** A cheap authenticated read per API, used to check credentials before saving them. */
 const PROBES: Record<ApiId, string> = {
@@ -44,6 +46,7 @@ function credentialFields(api: ApiId): SecretField[] {
  */
 export function credentialRequest(api: ApiId, config: AppConfig): SecureRequest {
   const name = API_NAMES[api];
+  let rejections = 0;
   return {
     operation: "connect_awardwallet",
     title: api === "accountAccess" ? "Connect AwardWallet" : `Connect the ${name}`,
@@ -66,14 +69,19 @@ export function credentialRequest(api: ApiId, config: AppConfig): SecureRequest 
       try {
         check = await verifyCredential(api, credential, config);
       } catch (error) {
-        if (error instanceof AwardWalletApiError && error.status === 401) {
-          throw new InputRejectedError(
-            api === "accountAccess"
-              ? `AwardWallet didn't accept this key. Copy it again from ${KEY_PAGE}, making sure you have all of it.`
-              : "AwardWallet didn't accept this username and password. Check them and try again.",
-          );
+        if (!(error instanceof AwardWalletApiError)) throw error;
+        // A lockout (reported without sending anything once known) leaves the form up for later.
+        if (error.lockedUntil) throw new InputRejectedError(error.message);
+        if (error.status !== 401) throw error;
+        // Each wrong key counts toward AwardWallet's lockout, so this link stops after a few.
+        if (++rejections >= MAX_REJECTIONS) {
+          throw new Error(`AwardWallet didn't accept ${MAX_REJECTIONS} keys in a row, so this link is closed to avoid getting locked out. Check the key at ${KEY_PAGE}, then ask your AI assistant for a new link.`);
         }
-        throw error;
+        throw new InputRejectedError(
+          api === "accountAccess"
+            ? `AwardWallet didn't accept this key. Copy it again from ${KEY_PAGE}, making sure you have all of it.`
+            : "AwardWallet didn't accept this username and password. Check them and try again.",
+        );
       }
       saveToSettingsFile(config.settingsFile, CREDENTIAL_NAMES[api], credential);
       config.credentials[api] = credential;

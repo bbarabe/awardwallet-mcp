@@ -9,7 +9,8 @@ Walk the user through connecting AwardWallet, one step at a time, in plain langu
 
 1. Call `get_status`.
    - `mode` starts with "demo": the plugin is showing sample data. Say so, then go to step 4.
-   - `setupHelp` is present: no API key yet. Go to step 2.
+   - `businessAccount.error` says AwardWallet locked this computer out: too many invalid keys were tried recently. Don't start a new connection. Tell the user when to try again (the time is in the message); their saved key is probably fine.
+   - `setupHelp` is present, or `businessAccount.error` says the key was rejected: go to step 2.
    - `businessAccount.accounts` is 0: go to step 3.
    - Otherwise go to step 4.
 
