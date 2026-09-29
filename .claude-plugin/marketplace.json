@@ -1,0 +1,16 @@
+{
+  "name": "awardwallet-mcp",
+  "owner": {
+    "name": "Benoit Barabe",
+    "url": "https://github.com/bbarabe"
+  },
+  "description": "AwardWallet MCP plugin (unofficial)",
+  "plugins": [
+    {
+      "name": "awardwallet",
+      "source": "./plugins/awardwallet",
+      "description": "Unofficial AwardWallet plugin: loyalty balances, elite status, expirations, account history and trips from AwardWallet, plus every AwardWallet API. Runs on your computer; your API key stays there.",
+      "category": "travel"
+    }
+  ]
+}
