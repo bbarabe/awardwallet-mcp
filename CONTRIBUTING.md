@@ -29,7 +29,7 @@ npm test
 | `npm run build` | Bundles `dist/awardwallet-mcp.mjs` |
 | `npm run inspect` | Opens the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) against the build; run with `AW_MOCK_MODE=true` for demo data |
 | `npm run pack:mcpb` | Builds and validates the Claude Desktop extension |
-| `npm run pack:plugin` | Builds the ChatGPT / Codex plugin marketplace in `build/chatgpt-marketplace` |
+| `npm run pack:plugin` | Builds the plugin marketplace for ChatGPT, Codex and Claude in `build/plugin-marketplace` |
 
 ## Where things live
 

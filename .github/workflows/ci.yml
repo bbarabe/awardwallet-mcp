@@ -33,5 +33,10 @@ jobs:
       - run: npm test
       - name: Build and validate the Claude Desktop extension
         run: npm run pack:mcpb
-      - name: Build the ChatGPT / Codex plugin
+      - name: Build the plugin marketplace (ChatGPT, Codex and Claude)
         run: npm run pack:plugin
+      - name: Check the release workflow publishes the folder pack:plugin builds
+        shell: bash
+        run: |
+          src=$(grep -o 'cp -a build/[^/ ]*' .github/workflows/release.yml | cut -d' ' -f3)
+          test -f "$src/.agents/plugins/marketplace.json" && test -f "$src/.claude-plugin/marketplace.json"
